@@ -1,0 +1,10 @@
+{
+  "name": "@uios/gateway-provider",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "exports": { ".": "./src/index.ts" },
+  "dependencies": { "@uios/contracts": "workspace:*" },
+  "devDependencies": { "typescript": "^5.9.0" },
+  "scripts": { "typecheck": "tsc --noEmit" }
+}

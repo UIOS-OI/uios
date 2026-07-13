@@ -1,0 +1,16 @@
+{
+  "name": "uios",
+  "private": true,
+  "version": "0.1.0",
+  "packageManager": "pnpm@11.7.0",
+  "scripts": {
+    "dev": "pnpm --filter @uios/dashboard dev",
+    "build": "pnpm --filter @uios/dashboard build",
+    "start": "pnpm --filter @uios/dashboard start",
+    "typecheck": "pnpm --filter @uios/dashboard typecheck",
+    "smoke": "node scripts/smoke.mjs",
+    "provider-smoke": "node scripts/provider-smoke.mjs",
+    "launch-audit": "node scripts/launch-audit.mjs",
+    "security-scan": "node scripts/security-scan.mjs"
+  }
+}

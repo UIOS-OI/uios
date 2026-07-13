@@ -1,0 +1,5 @@
+import { SiteNav } from "../components/site-nav";
+
+export default function ProductsPage() {
+  return <main><div className="shell legal-page"><SiteNav /><div className="eyebrow">Product architecture</div><h1>One platform. Focused products.</h1><p className="legal-lead">UIOS is the universal operating layer. FieldIQ OS is the enterprise experience built on it. Aegis is the stock security plane shared by every product.</p><div className="legal-grid"><article><h2>UIOS Core</h2><p>Contracts, routing, plugins, execution, usage, and observability.</p></article><article><h2>FieldIQ OS</h2><p>Enterprise dashboards, knowledge, agents, workflows, and optimization.</p></article><article><h2>Aegis</h2><p>Identity boundaries, policy enforcement, secrets hygiene, detection, and audit.</p></article></div><div className="actions" style={{ justifyContent: "flex-start" }}><a className="button" href="/pricing">See pricing ↗</a><a className="button button-light" href="/connect">Discuss a deployment</a></div></div></main>;
+}
