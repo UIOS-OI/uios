@@ -116,11 +116,16 @@ function CrystalCore({ timeline }: { timeline: Timeline }) {
   </group>;
 }
 
-function Scene({ timeline, pointer, reducedMotion }: { timeline: Timeline; pointer: Pointer; reducedMotion: boolean }) {
+function Scene({ timeline, pointer, scrollProgress, reducedMotion }: { timeline: Timeline; pointer: Pointer; scrollProgress: Timeline; reducedMotion: boolean }) {
   const { camera } = useThree();
   useFrame(({ clock }, delta) => {
     if (reducedMotion) timeline.current = 1;
-    else timeline.current = Math.min(1, timeline.current + delta / 18);
+    else {
+      // The cinematic can begin on its own, while scroll always provides a
+      // deterministic path deeper into the fabric for visitors who explore.
+      const autoplay = Math.min(1, timeline.current + delta / 18);
+      timeline.current = Math.min(1, Math.max(autoplay, scrollProgress.current));
+    }
     camera.position.z = THREE.MathUtils.lerp(camera.position.z, 8 - Math.max(0, timeline.current - .45) * 2.4, .02);
     void clock;
   });
@@ -138,21 +143,31 @@ export function CinematicFabric() {
   const root = useRef<HTMLDivElement>(null);
   const pointer = useRef({ x: 0, y: 0 });
   const timeline = useRef(0);
+  const scrollProgress = useRef(0);
   const [phase, setPhase] = useState(0);
   const [reducedMotion, setReducedMotion] = useState(false);
 
   useEffect(() => {
     setReducedMotion(window.matchMedia("(prefers-reduced-motion: reduce)").matches);
     if (root.current) gsap.fromTo(root.current, { opacity: 0 }, { opacity: 1, duration: 2.4, ease: "power2.out" });
+    const updateScrollProgress = () => {
+      const maxScroll = Math.max(1, document.documentElement.scrollHeight - window.innerHeight);
+      scrollProgress.current = THREE.MathUtils.clamp(window.scrollY / maxScroll, 0, 1);
+    };
+    updateScrollProgress();
+    window.addEventListener("scroll", updateScrollProgress, { passive: true });
     const timer = window.setInterval(() => setPhase(Math.min(5, Math.floor(timeline.current * 6))), 120);
-    return () => window.clearInterval(timer);
+    return () => {
+      window.clearInterval(timer);
+      window.removeEventListener("scroll", updateScrollProgress);
+    };
   }, []);
 
   function move(event: React.PointerEvent<HTMLDivElement>) { const rect = event.currentTarget.getBoundingClientRect(); pointer.current = { x: (event.clientX - rect.left) / rect.width * 2 - 1, y: -((event.clientY - rect.top) / rect.height * 2 - 1) }; }
 
   return <div ref={root} className="cinematic-experience" onPointerMove={move} role="img" aria-label="The Fabric of Intelligence: an interactive mycelium network forming around a living crystal core">
     <Canvas dpr={[1, 2]} camera={{ position: [0, 0, 8], fov: 48 }} gl={{ antialias: true, powerPreference: "high-performance" }}>
-      <Suspense fallback={null}><Scene timeline={timeline} pointer={pointer} reducedMotion={reducedMotion} /></Suspense>
+      <Suspense fallback={null}><Scene timeline={timeline} pointer={pointer} scrollProgress={scrollProgress} reducedMotion={reducedMotion} /></Suspense>
     </Canvas>
     <div className="cinematic-vignette" />
     <div className="cinematic-copy" aria-live="polite">
