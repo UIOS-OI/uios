@@ -31,3 +31,7 @@ The service packages under `services/` and shared contracts under `packages/` ar
 ## Visual architecture
 
 `MyceliumField` is currently a code-native high-DPI canvas with deterministic branches, depth-aware projection, pointer parallax, provider nodes, central UIOS core, and reduced-motion handling. A future WebGL/R3F renderer may replace it only after matching accessibility, performance, and fallback behavior.
+
+## Sprint 002 landing composition
+
+The homepage composes two independent client layers: `CinematicFabric` owns the fixed React Three Fiber scene and emits a completion event, while `ProductLanding` owns the post-cinematic copy, capability cards, and waitlist. This avoids tearing down the GPU scene during the transition. Scroll progress is held in refs and consumed by the render loop; cards use CSS transforms rather than React state. The prototype waitlist is intentionally local-only (`uios.waitlist.v1` in browser storage) and can later be replaced by an API adapter without changing the form contract.

@@ -26,9 +26,9 @@ UIOS is a vendor-neutral AI operating layer and control plane. It coordinates mo
 - SQLite/JSON local persistence with configurable audit retention.
 - Production readiness probe, OpenAPI contract, launch audit, dependency audit, security scan, and smoke/provider verification.
 
-## Current sprint: Early-access launch surface
+## Current sprint: Sprint 002 product landing experience
 
-Objective: turn the cinematic landing page into a clear, credible early-access funnel without weakening the platform safety boundary.
+Objective: turn the cinematic experience into a clear, credible early-access funnel without weakening the platform safety boundary.
 
 Definition of done:
 
@@ -37,6 +37,12 @@ Definition of done:
 - The local setup is reproducible from a fresh checkout.
 - Build, typecheck, full smoke, provider smoke, dependency audit, and security scan pass.
 - No unsupported certification or provider claims are made.
+
+Sprint 002 decisions:
+
+- The R3F fabric remains a fixed, always-live background layer; the product surface fades in after the scene reaches its final phase instead of replacing the canvas.
+- Product content is a client-only presentation layer. The waitlist stores a versioned, local-only record in `localStorage` and keeps the form boundary shaped for a future API, so no backend or tenant data path is introduced in this sprint.
+- Capability cards use CSS perspective transforms driven by pointer events rather than per-frame React state, keeping hover motion cheap and preserving the 60 FPS target.
 
 ## Next priority
 
