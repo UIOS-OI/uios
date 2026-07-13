@@ -38,6 +38,8 @@ Definition of done:
 - Build, typecheck, full smoke, provider smoke, dependency audit, and security scan pass.
 - No unsupported certification or provider claims are made.
 
+Sprint 002 status: shipped locally and pushed to `main`. The cinematic scene now transitions into the product landing surface, with capability education and a local-only early-access capture path.
+
 Sprint 002 decisions:
 
 - The R3F fabric remains a fixed, always-live background layer; the product surface fades in after the scene reaches its final phase instead of replacing the canvas.
