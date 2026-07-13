@@ -7,6 +7,7 @@
     "dev": "pnpm --filter @uios/dashboard dev",
     "build": "pnpm --filter @uios/dashboard build",
     "start": "pnpm --filter @uios/dashboard start",
+    "setup:local": "powershell -ExecutionPolicy Bypass -File scripts/setup-local.ps1",
     "typecheck": "pnpm --filter @uios/dashboard typecheck",
     "smoke": "node scripts/smoke.mjs",
     "provider-smoke": "node scripts/provider-smoke.mjs",
