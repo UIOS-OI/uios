@@ -156,12 +156,19 @@ export function CinematicFabric() {
     };
     updateScrollProgress();
     window.addEventListener("scroll", updateScrollProgress, { passive: true });
+    const replay = () => { timeline.current = 0; scrollProgress.current = 0; };
+    window.addEventListener("uios:replay-vision", replay);
     const timer = window.setInterval(() => setPhase(Math.min(5, Math.floor(timeline.current * 6))), 120);
     return () => {
       window.clearInterval(timer);
       window.removeEventListener("scroll", updateScrollProgress);
+      window.removeEventListener("uios:replay-vision", replay);
     };
   }, []);
+
+  useEffect(() => {
+    if (phase >= 5) window.dispatchEvent(new CustomEvent("uios:cinematic-complete"));
+  }, [phase]);
 
   function move(event: React.PointerEvent<HTMLDivElement>) { const rect = event.currentTarget.getBoundingClientRect(); pointer.current = { x: (event.clientX - rect.left) / rect.width * 2 - 1, y: -((event.clientY - rect.top) / rect.height * 2 - 1) }; }
 
