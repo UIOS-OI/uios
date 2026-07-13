@@ -14,7 +14,9 @@ export type UsageState = { units: number; requests: number; updatedAt: string; l
 type State = { workspaces: Record<string, StoredWorkspace>; apiKeys: Record<string, StoredApiKey>; usage: Record<string, UsageState>; usageEvents: Record<string, UsageEvent[]>; memories: Record<string, MemoryRecord[]>; analytics: Record<string, AnalyticsEvent[]> };
 
 const file = process.env.UIOS_STATE_FILE;
-const databaseFile = process.env.UIOS_STATE_DB;
+// Next evaluates route modules in parallel during `next build`; never open or mutate
+// a runtime persistence file while generating the build artifact.
+const databaseFile = process.env.NEXT_PHASE === "phase-production-build" ? undefined : process.env.UIOS_STATE_DB;
 const auditRetentionDays = Math.min(Math.max(Number(process.env.UIOS_AUDIT_RETENTION_DAYS ?? 365) || 365, 1), 3650);
 const auditRetentionCutoff = () => new Date(Date.now() - auditRetentionDays * 24 * 60 * 60 * 1000).toISOString();
 const sqlite = openDatabase(databaseFile);

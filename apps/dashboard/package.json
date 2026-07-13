@@ -9,7 +9,8 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "ai": "^7.0.22",
+    "@react-three/fiber": "^9.6.1",
+    "@react-three/postprocessing": "^3.0.4",
     "@uios/agent-engine": "workspace:*",
     "@uios/analytics": "workspace:*",
     "@uios/contracts": "workspace:*",
@@ -18,14 +19,19 @@
     "@uios/plugin-registry": "workspace:*",
     "@uios/router": "workspace:*",
     "@uios/workflow-engine": "workspace:*",
+    "ai": "^7.0.22",
+    "framer-motion": "^12.42.2",
+    "gsap": "^3.15.0",
     "next": "^15.5.0",
     "react": "^19.1.0",
-    "react-dom": "^19.1.0"
+    "react-dom": "^19.1.0",
+    "three": "^0.185.1"
   },
   "devDependencies": {
     "@types/node": "^22.15.0",
     "@types/react": "^19.1.0",
     "@types/react-dom": "^19.1.0",
+    "@types/three": "^0.185.1",
     "typescript": "^5.9.0"
   }
 }

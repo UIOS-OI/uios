@@ -9,6 +9,9 @@ const patterns = [
   [/dangerouslySetInnerHTML/, "unsafe HTML injection"],
 ];
 for (const file of files) {
+  // The scanner necessarily contains its own detection patterns; scan all tracked
+  // application/service sources without self-matching the scanner implementation.
+  if (file === "scripts/security-scan.mjs") continue;
   if (/^(?:pnpm-lock\.yaml|.*\.map)$/.test(file)) continue;
   let content;
   try { content = readFileSync(file, "utf8"); } catch { continue; }
