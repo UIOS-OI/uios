@@ -61,8 +61,22 @@ export class GatewayModelProvider implements ModelProvider {
     }
   }
 
+  async embed(inputs: string[]): Promise<number[][]> {
+    const response = await fetch(`${this.baseUrl}/embeddings`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${this.apiKey}`, "Content-Type": "application/json", "X-UIOS-Provider": this.id },
+      body: JSON.stringify({ input: inputs, model: this.defaultModel }),
+      cache: "no-store",
+      signal: AbortSignal.timeout(this.timeoutMs),
+    });
+    if (!response.ok) throw new Error(`UIOS provider ${this.id} rejected embedding request (${response.status})`);
+    const json = await response.json() as { data?: Array<{ embedding: number[] }> };
+    if (!json.data) throw new Error(`UIOS provider ${this.id} returned invalid embedding response`);
+    return json.data.map((item) => item.embedding);
+  }
+
   async listModels(): Promise<ModelDescriptor[]> {
-    return [{ id: this.defaultModel, provider: this.id, capabilities: ["chat", "stream", "tools"] }];
+    return [{ id: this.defaultModel, provider: this.id, capabilities: ["chat", "stream", "tools", "embed"] }];
   }
 
   async health(): Promise<ProviderHealth> {
