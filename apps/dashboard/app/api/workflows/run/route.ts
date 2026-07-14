@@ -35,7 +35,15 @@ export async function POST(request: NextRequest) {
   const planLimit = getPlanLimit(tenantId);
   if (getUsage(tenantId).units + units > planLimit) return Response.json({ error: "UIOS usage limit reached." }, { status: 402 });
   const run = await workflowEngine.run(workflow, input);
-  if (run.status === "failed") run.error = "UIOS workflow execution failed. Review the run audit for details.";
+  // Sanitize internal engine error messages before exposing them to callers.
+  if (run.status === "failed") {
+    const internalError = run.error ?? "";
+    if (internalError.startsWith("No handler registered") || internalError.startsWith("Workflow contains a cycle") || internalError.startsWith("UIOS provider") || internalError.startsWith("Agent ")) {
+      run.error = "UIOS workflow execution failed. Review the run audit for details.";
+    } else {
+      run.error = "UIOS workflow execution failed. Review the run audit for details.";
+    }
+  }
   if (run.status === "completed") recordUsage(tenantId, units, "workflow_run");
   analytics.track(tenantId, "workflow.run", { workflowId: workflow.id, status: run.status, nodes: workflow.nodes.length, modelNodes });
   return Response.json({ tenantId, run }, { status: run.status === "failed" ? 422 : 200 });

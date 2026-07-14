@@ -24,9 +24,10 @@ let state: State = loadState();
 
 function openDatabase(path: string | undefined): DatabaseSync | null {
   if (!path) return null;
-  mkdirSync(dirname(path), { recursive: true });
-  const database = new DatabaseSync(path);
-  database.exec(`
+  try {
+    mkdirSync(dirname(path), { recursive: true });
+    const database = new DatabaseSync(path);
+    database.exec(`
     PRAGMA journal_mode = WAL;
     CREATE TABLE IF NOT EXISTS workspaces (id TEXT PRIMARY KEY, name TEXT NOT NULL, plan TEXT NOT NULL, created_at TEXT NOT NULL);
     CREATE TABLE IF NOT EXISTS api_keys (id TEXT PRIMARY KEY, tenant_id TEXT NOT NULL, name TEXT NOT NULL, role TEXT NOT NULL DEFAULT 'developer', key_prefix TEXT NOT NULL, key_hash TEXT UNIQUE NOT NULL, created_at TEXT NOT NULL, last_used_at TEXT, revoked_at TEXT);
@@ -38,12 +39,16 @@ function openDatabase(path: string | undefined): DatabaseSync | null {
     CREATE TABLE IF NOT EXISTS analytics_events (id TEXT PRIMARY KEY, tenant_id TEXT NOT NULL, name TEXT NOT NULL, properties TEXT NOT NULL, timestamp TEXT NOT NULL);
     CREATE INDEX IF NOT EXISTS analytics_events_tenant_idx ON analytics_events(tenant_id, timestamp);
   `);
-  try { database.exec("ALTER TABLE api_keys ADD COLUMN revoked_at TEXT"); } catch { /* existing database already migrated */ }
-  try { database.exec("ALTER TABLE api_keys ADD COLUMN role TEXT NOT NULL DEFAULT 'developer'"); } catch { /* existing database already migrated */ }
-  const cutoff = auditRetentionCutoff();
-  database.prepare("DELETE FROM analytics_events WHERE timestamp < ?").run(cutoff);
-  database.prepare("DELETE FROM usage_events WHERE recorded_at < ?").run(cutoff);
-  return database;
+    try { database.exec("ALTER TABLE api_keys ADD COLUMN revoked_at TEXT"); } catch { /* existing database already migrated */ }
+    try { database.exec("ALTER TABLE api_keys ADD COLUMN role TEXT NOT NULL DEFAULT 'developer'"); } catch { /* existing database already migrated */ }
+    const cutoff = auditRetentionCutoff();
+    database.prepare("DELETE FROM analytics_events WHERE timestamp < ?").run(cutoff);
+    database.prepare("DELETE FROM usage_events WHERE recorded_at < ?").run(cutoff);
+    return database;
+  } catch (error) {
+    console.error("[UIOS] SQLite database failed to open — falling back to in-memory/JSON store:", error instanceof Error ? error.message : error);
+    return null;
+  }
 }
 
 function loadState(): State {
@@ -81,8 +86,12 @@ export function listAnalyticsEvents(): AnalyticsEvent[] {
 
 function persist() {
   if (!file) return;
-  mkdirSync(dirname(file), { recursive: true });
-  writeFileSync(file, JSON.stringify(state, null, 2), "utf8");
+  try {
+    mkdirSync(dirname(file), { recursive: true });
+    writeFileSync(file, JSON.stringify(state, null, 2), "utf8");
+  } catch (error) {
+    console.error("[UIOS] State persistence write failed:", error instanceof Error ? error.message : error);
+  }
 }
 
 export function saveWorkspace(workspace: StoredWorkspace): StoredWorkspace {

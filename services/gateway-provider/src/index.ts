@@ -48,7 +48,13 @@ export class GatewayModelProvider implements ModelProvider {
       for (const event of events) {
         const data = event.split("\n").find((line) => line.startsWith("data: "))?.slice(6).trim();
         if (!data || data === "[DONE]") continue;
-        const chunk = JSON.parse(data) as GatewayChunk;
+        let chunk: GatewayChunk;
+        try {
+          chunk = JSON.parse(data) as GatewayChunk;
+        } catch {
+          console.warn(`[UIOS] ${this.id}: skipping malformed SSE chunk`);
+          continue;
+        }
         const choice = chunk.choices?.[0];
         if (choice?.delta?.content || choice?.finish_reason) yield { id: randomUUID(), provider: this.id, model: request.model ?? this.defaultModel, content: choice.delta?.content ?? "", finishReason: choice.finish_reason };
       }

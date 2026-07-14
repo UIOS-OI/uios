@@ -14,8 +14,10 @@ function validSignature(payload: string, signature: string, secret: string): boo
 export async function POST(request: Request) {
   const secret = process.env.STRIPE_WEBHOOK_SECRET;
   if (!secret) return Response.json({ error: "Stripe webhook is not configured." }, { status: 503 });
+  const rawSignature = request.headers.get("stripe-signature") ?? "";
+  if (rawSignature.length > 4096) return Response.json({ error: "Invalid Stripe signature." }, { status: 400 });
   const payload = await request.text();
-  if (!validSignature(payload, request.headers.get("stripe-signature") ?? "", secret)) return Response.json({ error: "Invalid Stripe signature." }, { status: 400 });
+  if (!validSignature(payload, rawSignature, secret)) return Response.json({ error: "Invalid Stripe signature." }, { status: 400 });
   let event: { type?: string; data?: { object?: { metadata?: Record<string, string>; subscription?: string | null } } };
   try { event = JSON.parse(payload) as typeof event; } catch { return Response.json({ error: "Stripe payload must be valid JSON." }, { status: 400 }); }
   const metadata = event.data?.object?.metadata ?? {};

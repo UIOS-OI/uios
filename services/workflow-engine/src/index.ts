@@ -27,7 +27,11 @@ export class WorkflowEngine {
         for (const edge of workflow.edges.filter((candidate) => candidate.from === node.id)) {
           const remaining = (incoming.get(edge.to) ?? 1) - 1;
           incoming.set(edge.to, remaining);
-          if (remaining === 0) queue.push(workflow.nodes.find((candidate) => candidate.id === edge.to)!);
+          if (remaining === 0) {
+            const nextNode = workflow.nodes.find((candidate) => candidate.id === edge.to);
+            if (!nextNode) throw new Error(`Workflow edge references a missing node id: ${edge.to}`);
+            queue.push(nextNode);
+          }
         }
       }
       if (completed.size !== workflow.nodes.length) throw new Error("Workflow contains a cycle or unreachable node.");

@@ -2,7 +2,7 @@
 
 import { Bloom, EffectComposer } from "@react-three/postprocessing";
 import { Canvas, ThreeEvent, useFrame, useThree } from "@react-three/fiber";
-import { Suspense, useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
+import { Component, Suspense, useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import * as THREE from "three";
 import { OrbitControls as ThreeOrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 
@@ -973,6 +973,49 @@ function UniverseScene({ selected, focusVersion, reducedMotion, onSelect }: { se
   </>;
 }
 
+// ---------------------------------------------------------------------------
+// Canvas Error Boundary — catches WebGL / Three.js failures gracefully
+// ---------------------------------------------------------------------------
+interface CanvasBoundaryState { hasError: boolean; }
+class CanvasErrorBoundary extends Component<{ children: React.ReactNode }, CanvasBoundaryState> {
+  constructor(props: { children: React.ReactNode }) {
+    super(props);
+    this.state = { hasError: false };
+  }
+  static getDerivedStateFromError(): CanvasBoundaryState { return { hasError: true }; }
+  componentDidCatch(error: Error, info: React.ErrorInfo) {
+    console.error("[UIOS] Canvas/WebGL error caught by boundary:", error, info);
+  }
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div
+          style={{
+            position: "absolute", inset: 0,
+            background: "radial-gradient(ellipse at 50% 40%, #0d0a1f 0%, #010207 100%)",
+            display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
+            gap: "1rem", color: "#8899bb", fontFamily: "system-ui, sans-serif",
+          }}
+          role="status"
+          aria-label="UIOS visual unavailable"
+        >
+          <svg viewBox="0 0 1000 600" preserveAspectRatio="xMidYMid slice" style={{ position: "absolute", inset: 0, width: "100%", height: "100%", opacity: 0.18 }}>
+            <g stroke="#42d7ff" strokeWidth="0.8" fill="none">
+              <path d="M500 304 C438 286 392 238 322 198 S189 143 72 168" />
+              <path d="M500 304 C442 330 365 352 302 421 S165 505 42 480" />
+              <path d="M500 304 C568 272 619 221 689 190 S830 151 958 92" />
+              <path d="M500 304 C558 350 616 374 696 432 S835 516 986 486" />
+            </g>
+          </svg>
+          <span style={{ fontSize: "0.85rem", letterSpacing: "0.1em", position: "relative" }}>UIOS INTELLIGENCE UNIVERSE</span>
+          <span style={{ fontSize: "0.75rem", opacity: 0.6, position: "relative" }}>WebGL unavailable in this environment</span>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
+
 export function IntelligenceUniverse() {
   const [selected, setSelected] = useState<NodeId>("core");
   const [focusVersion, setFocusVersion] = useState(0);
@@ -1030,9 +1073,11 @@ export function IntelligenceUniverse() {
   }, []);
 
   return <section className={`intelligence-universe${ready ? " universe-ready" : ""}`} aria-label="Interactive UIOS intelligence universe">
-    <Canvas dpr={[1, 1.5]} camera={{ position: [0, 8, 40], fov: 48, near: .1, far: 120 }} gl={{ antialias: true, powerPreference: "high-performance" }}>
-      <Suspense fallback={null}><UniverseScene selected={selected} focusVersion={focusVersion} reducedMotion={reducedMotion} onSelect={selectSpatialNode} /></Suspense>
-    </Canvas>
+    <CanvasErrorBoundary>
+      <Canvas dpr={[1, 1.5]} camera={{ position: [0, 8, 40], fov: 48, near: .1, far: 120 }} gl={{ antialias: true, powerPreference: "high-performance" }}>
+        <Suspense fallback={null}><UniverseScene selected={selected} focusVersion={focusVersion} reducedMotion={reducedMotion} onSelect={selectSpatialNode} /></Suspense>
+      </Canvas>
+    </CanvasErrorBoundary>
 
     <header className="universe-header" onPointerDown={(event) => event.stopPropagation()}>
       <button type="button" className="universe-brand" onClick={() => navigateNode("core")} aria-label="Return to the UIOS Intelligence Core"><span>UI</span><i />S<small>INTELLIGENCE UNIVERSE</small></button>

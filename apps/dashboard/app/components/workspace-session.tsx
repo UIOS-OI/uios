@@ -10,7 +10,7 @@ export function WorkspaceSession() {
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
-    fetch("/api/workspace", { cache: "no-store" }).then(async (response) => {
+    fetch("/api/workspace", { cache: "no-store", signal: AbortSignal.timeout(8000) }).then(async (response) => {
       if (!response.ok) { setState(response.status === 401 ? "signed-out" : "error"); return; }
       const body = await response.json() as { workspace?: { name?: string } };
       setWorkspace(body.workspace?.name ?? "UIOS workspace"); setState("signed-in");

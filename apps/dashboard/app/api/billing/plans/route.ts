@@ -1,3 +1,5 @@
+export const runtime = "nodejs";
+
 const plans = [
   { id: "builder", name: "Builder", price: 0, interval: "month", includedUnits: 1000, description: "Prototype your first UIOS application." },
   { id: "scale", name: "Scale", price: 99, interval: "month", includedUnits: 25000, description: "Production routing, observability and team controls." },

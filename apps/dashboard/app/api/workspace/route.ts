@@ -36,7 +36,9 @@ export function DELETE(request: NextRequest) {
   if (tenantId === "local-development") return Response.json({ error: "A named workspace is required for deletion." }, { status: 400 });
   deleteWorkspaceData(tenantId);
   memoryStore.clear(tenantId); analytics.clear(tenantId);
-  const response = Response.json({ deleted: true, tenantId, deletedAt: new Date().toISOString() });
+  const response = NextResponse.json({ deleted: true, tenantId, deletedAt: new Date().toISOString() });
   response.headers.set("Cache-Control", "no-store");
+  // Clear the workspace session so the deleted tenant cannot continue to authenticate.
+  response.cookies.set("uios_workspace", "", { httpOnly: true, sameSite: "lax", secure: process.env.NODE_ENV === "production", path: "/", maxAge: 0 });
   return response;
 }
