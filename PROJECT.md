@@ -1,61 +1,24 @@
-# UIOS project source of truth
+# Project: UIOS Backend Execution Plane
 
-## Product
+## Architecture
+- Relational & Vector state persistence layer in `apps/dashboard/app/lib/state-store.ts` supporting PostgreSQL and pgvector.
+- SSO/Aegis Auth middleware boundary check wrapper (`withAuth` or Edge-compatible middleware).
+- Asynchronous event-driven document ingestion system utilizing BullMQ/Redis, pdf-parse, and SSE status streaming.
+- Model embedding capability integrated into `GatewayModelProvider`.
 
-UIOS — Universal Intelligence Operating System
+## Milestones
+| # | Name | Scope | Dependencies | Status |
+|---|---|---|---|---|
+| 1 | E2E Testing Track | Design E2E test cases covering database connection, tenant isolation, authentication middleware, and async execution loop. Publish TEST_READY.md. | None | PLANNED |
+| 2 | Model Embedding Integration | Add `embed()` to `GatewayModelProvider` and export it in contracts. | None | PLANNED |
+| 3 | PostgreSQL & pgvector Store | Transition `state-store.ts` to async PostgreSQL & pgvector schema. | M2 | PLANNED |
+| 4 | Security Middleware | Implement SSO / Aegis fail-closed middleware/wrapper validation. | M3 | PLANNED |
+| 5 | Asynchronous Ingestion | Implement document upload, BullMQ background worker, embedding generation, pgvector storage, and SSE real-time notifications. | M3, M4 | PLANNED |
+| 6 | Integration & Verification | Run the full E2E test suite and pass all checks (smoke tests, launch audit, security scan). | M1, M5 | PLANNED |
 
-Theme: **The Fabric of Intelligence**
-
-UIOS is a vendor-neutral AI operating layer and control plane. It coordinates models, agents, knowledge, tools, workflows, governance, observability, and Aegis security through one stable contract. It is not a desktop operating system.
-
-## Current status
-
-- **Blueprint:** complete
-- **Architecture:** foundation implemented
-- **Prototype:** running locally and on `UIOS-OI/uios`
-- **Alpha:** next milestone
-- **Beta/Public launch:** blocked on external identity, infrastructure, legal, testing, and certification gates
-
-## Shipped foundation
-
-- Fabric of Intelligence mycelium visualization with high-DPI rendering, pointer parallax, depth projection, provider nodes, and reduced-motion support.
-- Dedicated `/platform`, `/security`, `/products`, `/pricing`, and `/connect` pages.
-- Workspace session creation/logout, signed expiring cookies, API keys, RBAC, tenant isolation, export/deletion, usage metering, and rate limits.
-- Aegis checks across model, agent, workflow, and memory boundaries with explicit fail-closed external decisions.
-- Human approval tokens for sensitive workflows.
-- SQLite/JSON local persistence with configurable audit retention.
-- Production readiness probe, OpenAPI contract, launch audit, dependency audit, security scan, and smoke/provider verification.
-
-## Current sprint: Sprint 002 product landing experience
-
-Objective: turn the cinematic experience into a clear, credible early-access funnel without weakening the platform safety boundary.
-
-Definition of done:
-
-- The primary CTA opens `/connect` and explains exactly what happens next.
-- Platform, Aegis, products, pricing, and connect topics have dedicated pages.
-- The local setup is reproducible from a fresh checkout.
-- Build, typecheck, full smoke, provider smoke, dependency audit, and security scan pass.
-- No unsupported certification or provider claims are made.
-
-Sprint 002 status: shipped locally and pushed to `main`. The cinematic scene now transitions into the product landing surface, with capability education and a local-only early-access capture path.
-
-Sprint 002 decisions:
-
-- The R3F fabric remains a fixed, always-live background layer; the product surface fades in after the scene reaches its final phase instead of replacing the canvas.
-- Product content is a client-only presentation layer. The waitlist stores a versioned, local-only record in `localStorage` and keeps the form boundary shaped for a future API, so no backend or tenant data path is introduced in this sprint.
-- Capability cards use CSS perspective transforms driven by pointer events rather than per-frame React state, keeping hover motion cheap and preserving the 60 FPS target.
-
-## Next priority
-
-Integrate a managed enterprise identity provider and managed durable database before customer traffic. Keep the local signed workspace/API-key boundary as a development and service-level defense, not as a claim of enterprise SSO/MFA/SCIM compliance.
-
-## Working loop
-
-1. Read `AGENTS.md`, this file, and `README.md`.
-2. Inspect the current repository and preserve user changes.
-3. Select one highest-priority task from this document.
-4. Implement the smallest complete change.
-5. Update this file when status or architecture changes.
-6. Run the relevant verification commands.
-7. Commit with a descriptive message and push only when authorized.
+## Code Layout
+- apps/dashboard/app/lib/state-store.ts - Persistence
+- apps/dashboard/app/lib/runtime.ts - Auth & middleware
+- services/gateway-provider/src/index.ts - Model provider with embed()
+- apps/dashboard/app/api/ingestion - Ingestion endpoints (upload, status)
+- apps/dashboard/app/lib/ingestion-worker.ts - BullMQ worker
