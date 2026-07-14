@@ -20,7 +20,7 @@ type UniverseNode = {
 };
 
 const NODES: readonly UniverseNode[] = [
-  { id: "core", title: "Intelligence Core", shortTitle: "UIOS CORE", category: "SYSTEM CENTER", description: "The living center of the intelligence universe. Every route, memory, and policy boundary converges here.", color: "#9b6cff", position: [0, 0, 0], radius: 1.05, kind: "core" },
+  { id: "core", title: "Intelligence Core", shortTitle: "UIOS CORE", category: "SYSTEM SUN", description: "The living center of the intelligence universe. Every route, memory, and policy boundary converges here.", color: "#ffc52f", position: [0, 0, 0], radius: 2.25, kind: "core" },
   { id: "router", title: "Universal Router", shortTitle: "ROUTER", category: "ROUTER ZONE", description: "Intent moves through this zone toward the right model, agent, tool, or workflow.", color: "#3c9dff", position: [0, 10, -13], radius: .62, kind: "zone" },
   { id: "aegis", title: "Aegis Security", shortTitle: "AEGIS", category: "SECURITY ZONE", description: "The policy boundary surrounding every intelligence path, approval, and protected action.", color: "#25c8ff", position: [-13, -3.6, -9], radius: .66, kind: "zone" },
   { id: "memory", title: "Shared Memory", shortTitle: "MEMORY", category: "MEMORY ZONE", description: "A connected context field that keeps intelligence coherent across models, agents, and workflows.", color: "#a855f7", position: [13.5, -3.1, -10], radius: .66, kind: "zone" },
@@ -131,50 +131,67 @@ function StarField({ reducedMotion }: { reducedMotion: boolean }) {
   </points>;
 }
 
-function ZoneSporeField({ node, reducedMotion }: { node: UniverseNode; reducedMotion: boolean }) {
-  const field = useRef<THREE.Group>(null);
+function GalaxyField({ node, active, reducedMotion }: { node: UniverseNode; active: boolean; reducedMotion: boolean }) {
+  const galaxy = useRef<THREE.Group>(null);
   const positions = useMemo(() => {
     const seed = 0x94f11 + NODES.findIndex((item) => item.id === node.id) * 741;
     const random = seededRandom(seed);
-    const points = new Float32Array(120 * 3);
-    for (let index = 0; index < 120; index += 1) {
-      const radius = 1.25 + Math.pow(random(), .7) * 2.35;
-      const theta = random() * Math.PI * 2;
-      const phi = Math.acos(2 * random() - 1);
-      points[index * 3] = radius * Math.sin(phi) * Math.cos(theta) * (1 + (random() - .5) * .22);
-      points[index * 3 + 1] = radius * Math.cos(phi) * (.78 + random() * .18);
-      points[index * 3 + 2] = radius * Math.sin(phi) * Math.sin(theta) * (.84 + random() * .28);
+    const count = node.kind === "zone" ? 230 : 130;
+    const spread = node.kind === "zone" ? 2.7 : 1.35;
+    const points = new Float32Array(count * 3);
+    for (let index = 0; index < count; index += 1) {
+      const radius = .16 + Math.pow(random(), .58) * spread;
+      const arm = index % 3 * Math.PI * 2 / 3;
+      const theta = arm + radius * 1.42 + (random() - .5) * .48;
+      points[index * 3] = Math.cos(theta) * radius;
+      points[index * 3 + 1] = (random() - .5) * (.12 + radius * .045);
+      points[index * 3 + 2] = Math.sin(theta) * radius;
     }
     return points;
-  }, [node.id]);
+  }, [node.id, node.kind]);
 
   useFrame(({ clock }, delta) => {
-    if (!field.current || reducedMotion) return;
-    field.current.rotation.y += delta * .025;
-    field.current.rotation.z = Math.sin(clock.elapsedTime * .13 + node.position[0]) * .08;
+    if (!galaxy.current || reducedMotion) return;
+    galaxy.current.rotation.y += delta * (node.kind === "zone" ? .07 : .11);
+    galaxy.current.rotation.z = Math.sin(clock.elapsedTime * .11 + node.position[0]) * .06;
   });
 
-  return <group ref={field}>
+  const spread = node.kind === "zone" ? 2.7 : 1.35;
+  return <group ref={galaxy} rotation={[.42, 0, node.position[0] * .025]}>
     <points>
       <bufferGeometry><bufferAttribute attach="attributes-position" args={[positions, 3]} /></bufferGeometry>
-      <pointsMaterial color={node.color} size={.045} sizeAttenuation transparent opacity={.56} depthWrite={false} blending={THREE.AdditiveBlending} />
+      <pointsMaterial color={node.color} size={node.kind === "zone" ? .055 : .04} sizeAttenuation transparent opacity={active ? .95 : .68} depthWrite={false} blending={THREE.AdditiveBlending} />
     </points>
-    <mesh scale={[2.4, 2.02, 2.22]} rotation={[.2, .35, -.1]}>
-      <icosahedronGeometry args={[1, 2]} />
-      <meshBasicMaterial color={node.color} wireframe transparent opacity={.055} depthWrite={false} blending={THREE.AdditiveBlending} />
+    <mesh rotation={[Math.PI / 2, 0, 0]}>
+      <ringGeometry args={[spread * .42, spread, 96]} />
+      <meshBasicMaterial color={node.color} transparent opacity={active ? .055 : .025} side={THREE.DoubleSide} depthWrite={false} blending={THREE.AdditiveBlending} />
     </mesh>
-    <mesh scale={[3.05, 2.58, 2.82]} rotation={[-.12, -.28, .2]}>
-      <icosahedronGeometry args={[1, 1]} />
-      <meshBasicMaterial color={node.color} wireframe transparent opacity={.025} depthWrite={false} blending={THREE.AdditiveBlending} />
+    <mesh rotation={[Math.PI / 2, 0, 0]}>
+      <torusGeometry args={[spread * .74, .012, 5, 96]} />
+      <meshBasicMaterial color="#eaf8ff" transparent opacity={.22} depthWrite={false} blending={THREE.AdditiveBlending} />
     </mesh>
   </group>;
 }
 
 function CoreNode({ active, reducedMotion, onSelect }: { active: boolean; reducedMotion: boolean; onSelect: (id: NodeId) => void }) {
   const shell = useRef<THREE.Group>(null);
+  const fire = useRef<THREE.Group>(null);
   const rings = useRef<THREE.Group>(null);
   const [hovered, setHovered] = useState(false);
   const node = NODE_MAP.get("core")!;
+  const corona = useMemo(() => {
+    const random = seededRandom(0xf1a9e);
+    const points = new Float32Array(260 * 3);
+    for (let index = 0; index < 260; index += 1) {
+      const radius = 2.4 + Math.pow(random(), 2.2) * 1.25;
+      const theta = random() * Math.PI * 2;
+      const phi = Math.acos(2 * random() - 1);
+      points[index * 3] = radius * Math.sin(phi) * Math.cos(theta);
+      points[index * 3 + 1] = radius * Math.cos(phi);
+      points[index * 3 + 2] = radius * Math.sin(phi) * Math.sin(theta);
+    }
+    return points;
+  }, []);
 
   useFrame(({ clock }, delta) => {
     if (shell.current) {
@@ -183,22 +200,33 @@ function CoreNode({ active, reducedMotion, onSelect }: { active: boolean; reduce
       const pulse = reducedMotion ? 1 : 1 + Math.sin(clock.elapsedTime * 1.7) * .035;
       shell.current.scale.setScalar(pulse * (hovered ? 1.08 : 1));
     }
+    if (fire.current && !reducedMotion) {
+      fire.current.rotation.y -= delta * .12;
+      fire.current.rotation.z += delta * .035;
+      fire.current.scale.setScalar(1 + Math.sin(clock.elapsedTime * 2.1) * .026 + Math.sin(clock.elapsedTime * .73) * .018);
+    }
     if (rings.current && !reducedMotion) rings.current.rotation.z -= delta * .07;
   });
 
   const select = (event: ThreeEvent<MouseEvent>) => { event.stopPropagation(); onSelect("core"); };
   return <group position={node.position}>
     <group ref={shell} onClick={select} onPointerEnter={(event) => { event.stopPropagation(); setHovered(true); document.body.style.cursor = "pointer"; }} onPointerLeave={() => { setHovered(false); document.body.style.cursor = ""; }}>
-      <pointLight color={node.color} intensity={active ? 12 : 8} distance={14} decay={2} />
-      <mesh><icosahedronGeometry args={[1.05, 3]} /><meshPhysicalMaterial color="#2d236f" emissive={node.color} emissiveIntensity={active ? 1.55 : 1.15} roughness={.14} metalness={.18} transparent opacity={.9} /></mesh>
-      <mesh scale={.72}><octahedronGeometry args={[1, 2]} /><meshBasicMaterial color="#d7d2ff" transparent opacity={.46} blending={THREE.AdditiveBlending} toneMapped={false} /></mesh>
-      <mesh scale={1.16}><icosahedronGeometry args={[1, 1]} /><meshBasicMaterial color={node.color} wireframe transparent opacity={.6} blending={THREE.AdditiveBlending} toneMapped={false} /></mesh>
+      <pointLight color="#ffb21c" intensity={active ? 30 : 23} distance={32} decay={1.7} />
+      <mesh><sphereGeometry args={[2.25, 56, 56]} /><meshPhysicalMaterial color="#ff9d00" emissive="#ffb000" emissiveIntensity={active ? 3.5 : 2.8} roughness={.78} metalness={0} toneMapped={false} /></mesh>
+      <group ref={fire}>
+        <mesh><icosahedronGeometry args={[2.43, 4]} /><meshBasicMaterial color="#ffd84a" wireframe transparent opacity={.48} blending={THREE.AdditiveBlending} toneMapped={false} /></mesh>
+        <mesh rotation={[.4, .7, -.2]}><icosahedronGeometry args={[2.62, 2]} /><meshBasicMaterial color="#ff5b0a" wireframe transparent opacity={.24} blending={THREE.AdditiveBlending} toneMapped={false} /></mesh>
+        <points>
+          <bufferGeometry><bufferAttribute attach="attributes-position" args={[corona, 3]} /></bufferGeometry>
+          <pointsMaterial color="#ffcf40" size={.105} sizeAttenuation transparent opacity={.88} depthWrite={false} blending={THREE.AdditiveBlending} toneMapped={false} />
+        </points>
+      </group>
     </group>
     <group ref={rings}>
-      <mesh rotation={[Math.PI / 2, 0, 0]}><torusGeometry args={[1.72, .012, 6, 100]} /><meshBasicMaterial color="#7d8eff" transparent opacity={.52} blending={THREE.AdditiveBlending} /></mesh>
-      <mesh rotation={[1.15, .3, .5]}><torusGeometry args={[2.12, .008, 6, 100]} /><meshBasicMaterial color="#745cff" transparent opacity={.28} blending={THREE.AdditiveBlending} /></mesh>
+      <mesh rotation={[Math.PI / 2, 0, 0]}><torusGeometry args={[3.05, .018, 6, 120]} /><meshBasicMaterial color="#ffd84a" transparent opacity={.46} blending={THREE.AdditiveBlending} /></mesh>
+      <mesh rotation={[1.15, .3, .5]}><torusGeometry args={[3.72, .012, 6, 120]} /><meshBasicMaterial color="#ff6b12" transparent opacity={.25} blending={THREE.AdditiveBlending} /></mesh>
     </group>
-    <SpriteLabel text={node.shortTitle} color={node.color} y={-1.72} prominent />
+    <SpriteLabel text={node.shortTitle} color={node.color} y={-3.45} prominent />
   </group>;
 }
 
@@ -216,17 +244,84 @@ function IntelligenceNode({ node, active, reducedMotion, onSelect }: { node: Uni
 
   const select = (event: ThreeEvent<MouseEvent>) => { event.stopPropagation(); onSelect(node.id); };
   return <group position={node.position}>
-    {node.kind === "zone" ? <ZoneSporeField node={node} reducedMotion={reducedMotion} /> : null}
+    <GalaxyField node={node} active={active} reducedMotion={reducedMotion} />
     <group ref={ref} onClick={select} onPointerEnter={(event) => { event.stopPropagation(); setHovered(true); document.body.style.cursor = "pointer"; }} onPointerLeave={() => { setHovered(false); document.body.style.cursor = ""; }}>
       <pointLight color={node.color} intensity={active ? 5 : 2.4} distance={node.kind === "zone" ? 8 : 4.5} />
       <mesh>
         <sphereGeometry args={[node.radius, 28, 28]} />
-        <meshPhysicalMaterial color="#10162d" emissive={node.color} emissiveIntensity={active ? 1.9 : hovered ? 1.55 : 1.08} roughness={.2} metalness={.35} transparent opacity={.92} />
+        <meshPhysicalMaterial color="#f4f8ff" emissive={node.color} emissiveIntensity={active ? 2.4 : hovered ? 1.9 : 1.35} roughness={.26} metalness={.15} transparent opacity={.94} />
       </mesh>
-      <mesh scale={1.25}><icosahedronGeometry args={[node.radius, 1]} /><meshBasicMaterial color={node.color} wireframe transparent opacity={active ? .9 : .48} blending={THREE.AdditiveBlending} /></mesh>
-      <mesh rotation={[Math.PI / 2, 0, 0]}><torusGeometry args={[node.radius * 1.72, .012, 6, 64]} /><meshBasicMaterial color={node.color} transparent opacity={.7} blending={THREE.AdditiveBlending} /></mesh>
+      <mesh scale={1.3}><icosahedronGeometry args={[node.radius, 1]} /><meshBasicMaterial color="#eaf8ff" wireframe transparent opacity={active ? .95 : .55} blending={THREE.AdditiveBlending} /></mesh>
     </group>
     <SpriteLabel text={node.shortTitle} color={node.color} y={node.kind === "zone" ? -1.42 : -.86} prominent={node.kind === "zone"} />
+  </group>;
+}
+
+function WorldSatellite({ position, color, index, reducedMotion }: { position: THREE.Vector3; color: string; index: number; reducedMotion: boolean }) {
+  const satellite = useRef<THREE.Mesh>(null);
+  useFrame(({ clock }) => {
+    if (!satellite.current) return;
+    const pulse = reducedMotion ? 1 : .82 + Math.sin(clock.elapsedTime * (.72 + index * .031) + index * 1.37) * .22;
+    satellite.current.scale.setScalar(pulse);
+  });
+  return <mesh ref={satellite} position={position}>
+    <sphereGeometry args={[.105 + index % 3 * .018, 10, 10]} />
+    <meshBasicMaterial color={index % 2 ? color : "#d9f7ff"} toneMapped={false} />
+  </mesh>;
+}
+
+function LocalNodeWorld({ node, reducedMotion }: { node: UniverseNode; reducedMotion: boolean }) {
+  const world = useRef<THREE.Group>(null);
+  const material = useRef<THREE.LineBasicMaterial>(null);
+  const targetScale = useMemo(() => new THREE.Vector3(), []);
+  const data = useMemo(() => {
+    const random = seededRandom(0x7a11c + NODES.findIndex((item) => item.id === node.id) * 1307);
+    const satellites = Array.from({ length: 11 }, (_, index) => {
+      const angle = index / 11 * Math.PI * 2 + (random() - .5) * .42;
+      const radius = 1.45 + random() * 1.55;
+      return new THREE.Vector3(Math.cos(angle) * radius, (random() - .5) * 1.9, Math.sin(angle) * radius * .78);
+    });
+    const segments: number[] = [];
+    const appendCurve = (curve: THREE.CatmullRomCurve3, steps: number) => {
+      let previous = curve.getPoint(0);
+      for (let step = 1; step <= steps; step += 1) {
+        const point = curve.getPoint(step / steps);
+        segments.push(previous.x, previous.y, previous.z, point.x, point.y, point.z);
+        previous = point;
+      }
+    };
+    const center = new THREE.Vector3();
+    satellites.forEach((satellite, index) => {
+      const bend = satellite.clone().multiplyScalar(.48).add(new THREE.Vector3((index % 2 ? -1 : 1) * .22, .18 * Math.sin(index), .24));
+      appendCurve(new THREE.CatmullRomCurve3([center, bend, satellite], false, "centripetal"), 12);
+      const next = satellites[(index + 1) % satellites.length];
+      const bridge = satellite.clone().lerp(next, .5).multiplyScalar(1.13);
+      appendCurve(new THREE.CatmullRomCurve3([satellite, bridge, next], false, "centripetal"), 8);
+      if (index % 3 === 0) {
+        const cross = satellites[(index + 4) % satellites.length];
+        appendCurve(new THREE.CatmullRomCurve3([satellite, satellite.clone().lerp(cross, .5).add(new THREE.Vector3(0, .28, .18)), cross], false, "centripetal"), 9);
+      }
+    });
+    const geometry = new THREE.BufferGeometry();
+    geometry.setAttribute("position", new THREE.Float32BufferAttribute(segments, 3));
+    return { geometry, satellites };
+  }, [node.id]);
+
+  useEffect(() => () => data.geometry.dispose(), [data]);
+  useFrame(({ clock }, delta) => {
+    if (!world.current) return;
+    const target = 1 + (reducedMotion ? 0 : Math.sin(clock.elapsedTime * .42) * .025);
+    targetScale.setScalar(target);
+    world.current.scale.lerp(targetScale, Math.min(1, delta * 3.2));
+    if (!reducedMotion) world.current.rotation.y += delta * .045;
+    if (material.current) material.current.opacity = reducedMotion ? .52 : .42 + Math.sin(clock.elapsedTime * .63 + node.position[0]) * .14;
+  });
+
+  return <group ref={world} position={node.position} scale={.02}>
+    <lineSegments geometry={data.geometry}>
+      <lineBasicMaterial ref={material} color={node.color} transparent opacity={.48} blending={THREE.AdditiveBlending} toneMapped={false} />
+    </lineSegments>
+    {data.satellites.map((position, index) => <WorldSatellite key={`${node.id}-${index}`} position={position} color={node.color} index={index} reducedMotion={reducedMotion} />)}
   </group>;
 }
 
@@ -306,20 +401,38 @@ function LivingNetwork({ reducedMotion }: { reducedMotion: boolean }) {
     });
     return colors;
   }, [web.curves]);
+  const pulseProfiles = useMemo(() => {
+    const random = seededRandom(0x1e7c0);
+    const profiles = new Float32Array(web.curves.length * 3 * 4);
+    for (let index = 0; index < web.curves.length * 3; index += 1) {
+      profiles[index * 4] = .026 + random() * .032;
+      profiles[index * 4 + 1] = random();
+      profiles[index * 4 + 2] = .72 + random() * .8;
+      profiles[index * 4 + 3] = .72 + random() * .72;
+    }
+    return profiles;
+  }, [web.curves.length]);
 
   useEffect(() => () => { web.blueGeometry.dispose(); web.purpleGeometry.dispose(); }, [web]);
   useFrame(({ clock }) => {
-    const energy = reducedMotion ? 0 : Math.sin(clock.elapsedTime * 1.45);
-    if (blueLines.current) blueLines.current.opacity = .44 + energy * .13;
-    if (purpleLines.current) purpleLines.current.opacity = .4 - energy * .11;
+    const elapsed = clock.elapsedTime;
+    const blueEnergy = reducedMotion ? 0 : Math.sin(elapsed * .19) * .055 + Math.sin(elapsed * .071 + 2.1) * .035;
+    const purpleEnergy = reducedMotion ? 0 : Math.sin(elapsed * .143 + 1.8) * .05 + Math.sin(elapsed * .053) * .04;
+    if (blueLines.current) blueLines.current.opacity = .38 + blueEnergy;
+    if (purpleLines.current) purpleLines.current.opacity = .35 + purpleEnergy;
     const pulseMesh = pulses.current;
     if (!pulseMesh) return;
     web.curves.forEach((curve, edgeIndex) => {
       for (let pulseIndex = 0; pulseIndex < 3; pulseIndex += 1) {
         const instanceIndex = edgeIndex * 3 + pulseIndex;
-        const progress = reducedMotion ? .5 : (clock.elapsedTime * (.11 + edgeIndex % 3 * .016) + pulseIndex / 3 + edgeIndex * .091) % 1;
+        const speed = pulseProfiles[instanceIndex * 4];
+        const phase = pulseProfiles[instanceIndex * 4 + 1];
+        const shimmer = pulseProfiles[instanceIndex * 4 + 2];
+        const size = pulseProfiles[instanceIndex * 4 + 3];
+        const progress = reducedMotion ? phase : (elapsed * speed + phase) % 1;
+        const pulse = reducedMotion ? .7 : .18 + Math.pow(.5 + Math.sin(elapsed * shimmer + phase * Math.PI * 2) * .5, 3) * .82;
         position.copy(curve.getPointAt(progress));
-        scale.setScalar(.045 + Math.sin(progress * Math.PI) * .055);
+        scale.setScalar((.035 + Math.sin(progress * Math.PI) * .07) * size * pulse);
         matrix.compose(position, quaternion, scale);
         pulseMesh.setMatrixAt(instanceIndex, matrix);
       }
@@ -328,8 +441,8 @@ function LivingNetwork({ reducedMotion }: { reducedMotion: boolean }) {
   });
 
   return <group>
-    <lineSegments geometry={web.blueGeometry}><lineBasicMaterial ref={blueLines} color="#38cfff" transparent opacity={.44} blending={THREE.AdditiveBlending} toneMapped={false} /></lineSegments>
-    <lineSegments geometry={web.purpleGeometry}><lineBasicMaterial ref={purpleLines} color="#b55cff" transparent opacity={.4} blending={THREE.AdditiveBlending} toneMapped={false} /></lineSegments>
+    <lineSegments geometry={web.blueGeometry}><lineBasicMaterial ref={blueLines} color="#38cfff" transparent opacity={.38} blending={THREE.AdditiveBlending} toneMapped={false} /></lineSegments>
+    <lineSegments geometry={web.purpleGeometry}><lineBasicMaterial ref={purpleLines} color="#b55cff" transparent opacity={.35} blending={THREE.AdditiveBlending} toneMapped={false} /></lineSegments>
     <instancedMesh ref={pulses} args={[undefined, undefined, web.curves.length * 3]} frustumCulled={false}>
       <sphereGeometry args={[1, 7, 7]}><instancedBufferAttribute attach="attributes-instanceColor" args={[pulseColors, 3]} /></sphereGeometry>
       <meshBasicMaterial vertexColors transparent opacity={.95} blending={THREE.AdditiveBlending} toneMapped={false} />
@@ -372,7 +485,7 @@ function CameraRig({ selected, focusVersion, reducedMotion }: { selected: NodeId
     const direction = target.clone();
     if (direction.lengthSq() < .01) direction.set(.35, .2, 1);
     direction.normalize();
-    const distance = node.kind === "core" ? 13.5 : node.kind === "zone" ? 5.2 : 3.4;
+    const distance = node.kind === "core" ? 15.5 : node.kind === "zone" ? 7.5 : 5.4;
     const destination = target.clone().add(direction.multiplyScalar(distance)).add(new THREE.Vector3(0, node.kind === "provider" ? .65 : 1.35, node.kind === "core" ? 0 : 1.5));
     transition.current = {
       active: true,
@@ -414,6 +527,7 @@ function UniverseScene({ selected, focusVersion, reducedMotion, onSelect }: { se
     <LivingNetwork reducedMotion={reducedMotion} />
     <CoreNode active={selected === "core"} reducedMotion={reducedMotion} onSelect={onSelect} />
     {NODES.filter((node) => node.id !== "core").map((node) => <IntelligenceNode key={node.id} node={node} active={selected === node.id} reducedMotion={reducedMotion} onSelect={onSelect} />)}
+    {selected !== "core" ? <LocalNodeWorld key={selected} node={NODE_MAP.get(selected)!} reducedMotion={reducedMotion} /> : null}
     <CameraRig selected={selected} focusVersion={focusVersion} reducedMotion={reducedMotion} />
     <EffectComposer multisampling={0}><Bloom intensity={1.02} luminanceThreshold={.24} luminanceSmoothing={.72} mipmapBlur /></EffectComposer>
   </>;
