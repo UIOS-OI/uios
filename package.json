@@ -2,7 +2,7 @@
   "name": "uios",
   "private": true,
   "version": "0.1.0",
-  "packageManager": "pnpm@11.7.0",
+  "packageManager": "pnpm@10.34.2",
   "scripts": {
     "dev": "pnpm --filter @uios/dashboard dev",
     "build": "pnpm --filter @uios/dashboard build",
