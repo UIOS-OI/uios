@@ -237,6 +237,17 @@ const NODES: readonly UniverseNode[] = [
   { id: "mistral", title: "Mistral AI", shortTitle: "MISTRAL", category: "AI PROVIDER NODE", description: "A provider connection point within the wider UIOS routing universe.", color: "#c084fc", position: [7.2, -7, -3.4], radius: .31, kind: "provider" },
 ];
 
+const FROZEN_FABRIC_POSITIONS: Record<NodeId, { x: number; y: number }> = {
+  core: { x: 50, y: 52 },
+  router: { x: 49, y: 22 },
+  aegis: { x: 24, y: 44 },
+  memory: { x: 76, y: 43 },
+  openai: { x: 14, y: 24 },
+  anthropic: { x: 85, y: 25 },
+  gemini: { x: 22, y: 74 },
+  mistral: { x: 79, y: 73 },
+};
+
 const NODE_MAP = new Map(NODES.map((node) => [node.id, node]));
 const CONNECTIONS: readonly [NodeId, NodeId][] = [
   ["core", "router"], ["core", "aegis"], ["core", "memory"],
@@ -1445,7 +1456,7 @@ const DETAIL_MAP: Record<NodeId, NodeDetails> = {
   }
 };
 
-export function IntelligenceUniverse() {
+function LegacyIntelligenceUniverse() {
   const [mounted, setMounted] = useState(false);
   const [hasWebGL2, setHasWebGL2] = useState(true);
 
@@ -1730,4 +1741,159 @@ export function IntelligenceUniverse() {
       </div>
     </div>
   </section>;
+}
+
+export function IntelligenceUniverse() {
+  const [ready, setReady] = useState(false);
+  const [hoveredNode, setHoveredNode] = useState<NodeId | null>(null);
+  const [clickedNode, setClickedNode] = useState<NodeId | null>(null);
+  const [introVideoMuted, setIntroVideoMuted] = useState(true);
+  const [introPlaybackBlocked, setIntroPlaybackBlocked] = useState(false);
+  const [introVersion, setIntroVersion] = useState(0);
+  const introFinished = useRef(false);
+  const introVideoRef = useRef<HTMLVideoElement>(null);
+
+  const activeId = hoveredNode || clickedNode;
+  const node = NODE_MAP.get(activeId || "core")!;
+  const details = DETAIL_MAP[activeId || "core"];
+
+  const completeIntro = useCallback(() => {
+    if (introFinished.current) return;
+    introFinished.current = true;
+    setReady(true);
+    window.dispatchEvent(new CustomEvent("uios:cinematic-complete"));
+  }, []);
+
+  const playIntroVideo = useCallback(() => {
+    const video = introVideoRef.current;
+    if (!video) return;
+    void video.play().then(
+      () => setIntroPlaybackBlocked(false),
+      () => setIntroPlaybackBlocked(true),
+    );
+  }, []);
+
+  const freezeOnFinalFrame = useCallback(() => {
+    const video = introVideoRef.current;
+    if (video) {
+      video.pause();
+      if (Number.isFinite(video.duration) && video.duration > 0) {
+        video.currentTime = Math.max(0, video.duration - 0.04);
+      }
+    }
+    completeIntro();
+  }, [completeIntro]);
+
+  const replayIntro = useCallback(() => {
+    introFinished.current = false;
+    setReady(false);
+    setClickedNode(null);
+    setHoveredNode(null);
+    setIntroVideoMuted(true);
+    setIntroPlaybackBlocked(false);
+    setIntroVersion((version) => version + 1);
+  }, []);
+
+  const selectNode = useCallback((id: NodeId) => {
+    setClickedNode(id);
+    setHoveredNode(null);
+  }, []);
+
+  return (
+    <section className={`intelligence-universe frozen-fabric${ready ? " universe-ready" : ""}`} aria-label="Interactive UIOS intelligence fabric">
+      <div className="universe-intro" key={introVersion} aria-label="UIOS cinematic introduction">
+        <video
+          ref={introVideoRef}
+          className="universe-intro-video"
+          autoPlay
+          muted={introVideoMuted}
+          playsInline
+          preload="auto"
+          onCanPlay={playIntroVideo}
+          onPlaying={() => setIntroPlaybackBlocked(false)}
+          onEnded={completeIntro}
+          onError={completeIntro}
+        >
+          <source src="/media/uios-intro.mp4" type="video/mp4" />
+        </video>
+
+        {introPlaybackBlocked ? (
+          <button type="button" className="universe-intro-play" onClick={playIntroVideo}>
+            <span>▶</span> PLAY INTRO
+          </button>
+        ) : null}
+
+        <div className="universe-intro-actions">
+          <button type="button" onClick={() => setIntroVideoMuted((isMuted) => !isMuted)}>
+            {introVideoMuted ? "ENABLE SOUND" : "MUTE"}
+          </button>
+          <button type="button" onClick={freezeOnFinalFrame}>SKIP INTRO</button>
+        </div>
+      </div>
+
+      <header className="universe-header">
+        <button type="button" className="universe-brand" onClick={() => selectNode("core")} aria-label="Open the UIOS Intelligence Core">
+          <span>UI</span><i />S<small>FABRIC OF INTELLIGENCE</small>
+        </button>
+        <div className="universe-coordinates"><i /> FABRIC ONLINE <span>WORLD 003</span></div>
+        <div className="universe-header-actions">
+          <button type="button" className="universe-sound-toggle" onClick={replayIntro}>↻ REPLAY INTRO</button>
+          <button type="button" className="universe-reset" onClick={() => { setClickedNode(null); setHoveredNode(null); }}>CLEAR <span>×</span></button>
+        </div>
+      </header>
+
+      <div className="frozen-fabric-overlay" aria-label="Explore the UIOS intelligence zones">
+        <button type="button" className={`frozen-fabric-wordmark${clickedNode === "core" ? " active" : ""}`} onClick={() => selectNode("core")}>
+          <span>UI</span><i />S
+          <small>THE FABRIC OF INTELLIGENCE</small>
+        </button>
+
+        {NODES.filter((item) => item.id !== "core").map((item, index) => {
+          const position = FROZEN_FABRIC_POSITIONS[item.id];
+          const isActive = clickedNode === item.id || hoveredNode === item.id;
+          return (
+            <button
+              type="button"
+              className={`frozen-fabric-node${position.x > 60 ? " align-right" : ""}${isActive ? " active" : ""}`}
+              style={{ left: `${position.x}%`, top: `${position.y}%`, color: item.color, animationDelay: `${index * 90}ms` }}
+              aria-label={`Explore ${item.title}`}
+              aria-pressed={clickedNode === item.id}
+              onClick={() => selectNode(item.id)}
+              onPointerEnter={() => setHoveredNode(item.id)}
+              onPointerLeave={() => setHoveredNode(null)}
+              key={item.id}
+            >
+              <span className="frozen-fabric-node-dot"><i /></span>
+              <strong>{item.shortTitle}</strong>
+              <small>{item.category}</small>
+            </button>
+          );
+        })}
+      </div>
+
+      <div className={`universe-readout frozen-fabric-readout${activeId ? " visible" : ""}`} aria-live="polite">
+        <button type="button" className="frozen-fabric-readout-close" onClick={() => { setClickedNode(null); setHoveredNode(null); }} aria-label="Close zone details">×</button>
+        <span className="universe-readout-category"><i style={{ background: node.color, boxShadow: `0 0 14px ${node.color}` }} />{node.category}</span>
+        <h1>{node.title}</h1>
+        <p>{node.description}</p>
+        <div className="universe-readout-divider" />
+        <div className="universe-readout-metrics">
+          <div className="universe-readout-metric"><span>Status</span><strong style={{ color: activeId === "core" ? "#5bf0b0" : node.color }}>● {details.status}</strong></div>
+          <div className="universe-readout-metric"><span>{details.metricLabel}</span><strong>{details.metricValue}</strong></div>
+        </div>
+        <div className="universe-readout-features">
+          {details.features.map((feature) => (
+            <div className="universe-readout-feature" key={feature}><i style={{ background: node.color, boxShadow: `0 0 8px ${node.color}` }} /><span>{feature}</span></div>
+          ))}
+        </div>
+        {details.ctaUrl === "replay" ? (
+          <button type="button" className="universe-readout-cta" onClick={replayIntro}>{details.ctaText}</button>
+        ) : (
+          <button type="button" className="universe-readout-cta" onClick={() => { window.location.href = details.ctaUrl; }}>{details.ctaText}</button>
+        )}
+      </div>
+
+      <div className="frozen-fabric-hint"><span>SELECT A SIGNAL</span> TO ENTER THE INTELLIGENCE FABRIC</div>
+    </section>
+  );
 }
