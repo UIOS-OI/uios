@@ -9,8 +9,8 @@
 ## Milestones
 | # | Name | Scope | Dependencies | Status |
 |---|---|---|---|---|
-| 1 | E2E Testing Track | Design E2E test cases covering database connection, tenant isolation, authentication middleware, and async execution loop. Publish TEST_READY.md. | None | PLANNED |
-| 2 | Model Embedding Integration | Add `embed()` to `GatewayModelProvider` and export it in contracts. | None | PLANNED |
+| 1 | E2E Testing Track | Design E2E test cases covering database connection, tenant isolation, authentication middleware, and async execution loop. Publish TEST_READY.md. | None | DONE |
+| 2 | Model Embedding Integration | Add `embed()` to `GatewayModelProvider` and export it in contracts. | None | DONE |
 | 3 | PostgreSQL & pgvector Store | Transition `state-store.ts` to async PostgreSQL & pgvector schema. | M2 | DONE |
 | 4 | Security Middleware | Implement SSO / Aegis fail-closed middleware/wrapper validation. | M3 | DONE |
 | 5 | Asynchronous Ingestion | Implement document upload, BullMQ background worker, embedding generation, pgvector storage, and SSE real-time notifications. | M3, M4 | DONE |
