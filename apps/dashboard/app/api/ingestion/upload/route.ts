@@ -17,19 +17,24 @@ export async function POST(request: NextRequest) {
   let fileType = "";
   let buffer: Buffer | null = null;
 
-  try {
-    const formData = await request.formData();
-    const file = formData.get("file") as File | null;
-    if (file) {
-      fileName = file.name;
-      fileType = file.type;
-      buffer = Buffer.from(await file.arrayBuffer());
+  const contentType = request.headers.get("content-type") ?? "";
+  if (contentType.includes("multipart/form-data")) {
+    try {
+      const formData = await request.formData();
+      const file = formData.get("file") as File | null;
+      if (file) {
+        fileName = file.name;
+        fileType = file.type;
+        buffer = Buffer.from(await file.arrayBuffer());
+      }
+    } catch (err: any) {
+      return Response.json({ error: `Failed to parse form data: ${err.message}` }, { status: 400 });
     }
-  } catch (err) {
+  } else {
     try {
       const rawBody = await request.arrayBuffer();
       const bodyBuffer = Buffer.from(rawBody);
-      const parsed = parseMultipartBody(bodyBuffer, request.headers.get("content-type"));
+      const parsed = parseMultipartBody(bodyBuffer, contentType);
       if (parsed.file) {
         fileName = parsed.file.name;
         fileType = parsed.file.type;

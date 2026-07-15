@@ -20,9 +20,11 @@ export function signWorkspaceIdWithCustomSecret(workspaceId, secret, ttlSeconds 
 export async function fetchJson(path, options = {}) {
   const url = `${baseUrl}${path}`;
   const headers = {
-    "content-type": "application/json",
     ...options.headers,
   };
+  if (!headers["content-type"] && !(options.body instanceof FormData)) {
+    headers["content-type"] = "application/json";
+  }
   
   const response = await fetch(url, {
     ...options,

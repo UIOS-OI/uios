@@ -31,13 +31,22 @@ export default async function run(test, ctx) {
   });
 
   test("TC-COMB-02", "Vector Query Tenant Isolation", async () => {
-    if (!ctx.cookie || !ctx.viewerKey) {
-      throw new Error("Tenant A or Tenant B keys/cookies not available");
+    // Create a new separate workspace (Tenant B)
+    const tenantBRes = await fetchJson("/api/workspace", {
+      method: "POST",
+      body: JSON.stringify({ name: "Tenant B Corp" }),
+    });
+    if (tenantBRes.status !== 200) {
+      throw new Error(`Failed to create Tenant B workspace: status ${tenantBRes.status}`);
     }
-    
-    // Ingestion query from Tenant B (viewerKey) should not return results for Tenant A
+    const tenantBCookie = tenantBRes.headers.get("set-cookie")?.split(";")[0];
+    if (!tenantBCookie) {
+      throw new Error("No cookie returned for Tenant B");
+    }
+
+    // Ingestion query from Tenant B should not return results for Tenant A
     const res = await fetchJson("/api/ingestion/search?q=blueprint", {
-      headers: { Authorization: `Bearer ${ctx.viewerKey}` }
+      headers: { cookie: tenantBCookie }
     });
     
     if (res.status !== 200) {

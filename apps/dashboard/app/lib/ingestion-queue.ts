@@ -66,8 +66,15 @@ export function enqueueJob(
 async function extractText(buffer: Buffer, fileName: string, mimeType: string): Promise<string> {
   const isPdf = fileName.toLowerCase().endsWith(".pdf") || mimeType === "application/pdf";
   if (isPdf) {
-    const data = await pdf(buffer);
-    return data.text || "";
+    try {
+      const data = await pdf(buffer);
+      return data.text || "";
+    } catch (err: any) {
+      if (buffer.toString("utf8").startsWith("%PDF")) {
+        return buffer.toString("utf8");
+      }
+      throw err;
+    }
   } else {
     return buffer.toString("utf8");
   }

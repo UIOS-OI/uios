@@ -96,7 +96,11 @@ export async function resolveAuth(request: NextRequest): Promise<{ tenantId: str
     expected = createHmac("sha256", secret).update(payload).digest("base64url");
   } catch { return fallback(); }
   try {
-    if (timingSafeEqual(Buffer.from(provided), Buffer.from(expected))) return { tenantId: workspaceId, role: "owner" };
+    if (timingSafeEqual(Buffer.from(provided), Buffer.from(expected))) {
+      const ws = await findWorkspace(workspaceId);
+      if (!ws) return fallback();
+      return { tenantId: workspaceId, role: "owner" };
+    }
   } catch {
     return fallback();
   }

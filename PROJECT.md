@@ -13,8 +13,8 @@
 | 2 | Model Embedding Integration | Add `embed()` to `GatewayModelProvider` and export it in contracts. | None | PLANNED |
 | 3 | PostgreSQL & pgvector Store | Transition `state-store.ts` to async PostgreSQL & pgvector schema. | M2 | DONE |
 | 4 | Security Middleware | Implement SSO / Aegis fail-closed middleware/wrapper validation. | M3 | DONE |
-| 5 | Asynchronous Ingestion | Implement document upload, BullMQ background worker, embedding generation, pgvector storage, and SSE real-time notifications. | M3, M4 | IN_PROGRESS |
-| 6 | Integration & Verification | Run the full E2E test suite and pass all checks (smoke tests, launch audit, security scan). | M1, M5 | PLANNED |
+| 5 | Asynchronous Ingestion | Implement document upload, BullMQ background worker, embedding generation, pgvector storage, and SSE real-time notifications. | M3, M4 | DONE |
+| 6 | Integration & Verification | Run the full E2E test suite and pass all checks (smoke tests, launch audit, security scan). | M1, M5 | DONE |
 
 ## Code Layout
 - apps/dashboard/app/lib/state-store.ts - Persistence
