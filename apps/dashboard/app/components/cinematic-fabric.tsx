@@ -2,7 +2,7 @@
 
 import { Bloom, EffectComposer } from "@react-three/postprocessing";
 import { Canvas, ThreeEvent, useFrame, useThree } from "@react-three/fiber";
-import { Component, Suspense, useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
+import { Component, Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import * as THREE from "three";
 import { OrbitControls as ThreeOrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 
@@ -236,11 +236,6 @@ const NODES: readonly UniverseNode[] = [
   { id: "gemini", title: "Google Gemini", shortTitle: "GEMINI", category: "AI PROVIDER NODE", description: "A provider connection point within the wider UIOS routing universe.", color: "#60a5fa", position: [-6.4, -7.6, -2.2], radius: .31, kind: "provider" },
   { id: "mistral", title: "Mistral AI", shortTitle: "MISTRAL", category: "AI PROVIDER NODE", description: "A provider connection point within the wider UIOS routing universe.", color: "#c084fc", position: [7.2, -7, -3.4], radius: .31, kind: "provider" },
 ];
-
-const INTRO_SPARKS = [
-  [10, 18, 0], [23, 72, .34], [35, 28, .72], [46, 82, .18], [58, 16, .92], [71, 68, .48], [84, 31, 1.1], [91, 78, .62],
-  [16, 48, 1.28], [29, 9, .56], [41, 58, 1.44], [55, 38, .82], [66, 88, .24], [77, 47, 1.36], [88, 12, .4], [5, 86, 1.02],
-] as const;
 
 const NODE_MAP = new Map(NODES.map((node) => [node.id, node]));
 const CONNECTIONS: readonly [NodeId, NodeId][] = [
@@ -1471,7 +1466,9 @@ export function IntelligenceUniverse() {
   const [reducedMotion, setReducedMotion] = useState(false);
   const [ready, setReady] = useState(false);
   const [muted, setMuted] = useState(true);
+  const [introVideoMuted, setIntroVideoMuted] = useState(true);
   const [introVersion, setIntroVersion] = useState(0);
+  const introFinished = useRef(false);
   const hudLockUntil = useRef(0);
 
   // 3D Cinematic Playground states
@@ -1486,10 +1483,19 @@ export function IntelligenceUniverse() {
   const activeId = hoveredNode || clickedNode;
   const node = NODE_MAP.get(activeId || "core")!;
 
+  const completeIntro = useCallback(() => {
+    if (introFinished.current) return;
+    introFinished.current = true;
+    setReady(true);
+    window.dispatchEvent(new CustomEvent("uios:cinematic-complete"));
+  }, []);
+
   // Listen to replay events from the landing overlay
   useEffect(() => {
     const handleReplay = () => {
+      introFinished.current = false;
       setIntroVersion((v) => v + 1);
+      setIntroVideoMuted(true);
       setReady(false);
     };
     window.addEventListener("uios:replay-vision", handleReplay);
@@ -1502,12 +1508,9 @@ export function IntelligenceUniverse() {
     updateMotion();
     motion.addEventListener("change", updateMotion);
     
-    // Intro sequence: 7.8 seconds
-    const timer = window.setTimeout(() => {
-      setReady(true);
-      // Dispatch completion event to fade in HTML landing details
-      window.dispatchEvent(new CustomEvent("uios:cinematic-complete"));
-    }, motion.matches ? 0 : 7800);
+    // Let reduced-motion visitors through immediately. The longer timer is a
+    // safety net for browsers that neither play nor report a media error.
+    const timer = window.setTimeout(completeIntro, motion.matches ? 0 : 12000);
 
     return () => { 
       window.clearTimeout(timer); 
@@ -1515,7 +1518,7 @@ export function IntelligenceUniverse() {
       document.body.style.cursor = ""; 
       uiosAudio.close();
     };
-  }, [introVersion]);
+  }, [completeIntro, introVersion]);
 
   // Synchronized chimes with flickering sparks
   useEffect(() => {
@@ -1643,30 +1646,23 @@ export function IntelligenceUniverse() {
 
     <div className="universe-controls" aria-label="Camera controls"><span>DRAG</span> ORBIT <i /> <span>SCROLL</span> ZOOM <i /> <span>CLICK</span> DISCOVER</div>
     <div className="universe-reticle" aria-hidden="true"><i /><i /></div>
-    <div className="universe-intro" aria-hidden="true" key={introVersion}>
-      <div className="intro-depth-sparks">
-        {INTRO_SPARKS.map(([x, y, delay], index) => <i key={`${x}-${y}`} style={{ "--spark-x": `${x}%`, "--spark-y": `${y}%`, "--spark-delay": `${delay}s`, "--spark-color": index % 3 === 0 ? "#b55cff" : "#42d7ff" } as CSSProperties} />)}
-      </div>
-      <svg className="intro-network" viewBox="0 0 1000 600" preserveAspectRatio="xMidYMid slice">
-        <g className="intro-network-blue">
-          <path pathLength="1" d="M500 304 C438 286 392 238 322 198 S189 143 72 168" />
-          <path pathLength="1" d="M500 304 C442 330 365 352 302 421 S165 505 42 480" />
-          <path pathLength="1" d="M500 304 C472 247 464 177 416 112 S356 39 318 8" />
-        </g>
-        <g className="intro-network-violet">
-          <path pathLength="1" d="M500 304 C568 272 619 221 689 190 S830 151 958 92" />
-          <path pathLength="1" d="M500 304 C558 350 616 374 696 432 S835 516 986 486" />
-          <path pathLength="1" d="M500 304 C536 238 558 172 616 100 S692 35 742 4" />
-        </g>
-      </svg>
-      <div className="intro-ignition"><i /><b /></div>
-      <div className="intro-crystal">
-        <i /><i /><i /><i /><i /><i />
-      </div>
-      <div className="intro-wordmark">
-        <div className="intro-logo-mark"><span>UI</span><i /><span>S</span></div>
-        <strong>THE FABRIC OF INTELLIGENCE</strong>
-        <small>THE FABRIC OF INTELLIGENCE</small>
+    <div className="universe-intro" key={introVersion} aria-label="UIOS cinematic introduction">
+      <video
+        className="universe-intro-video"
+        autoPlay
+        muted={introVideoMuted}
+        playsInline
+        preload="auto"
+        onEnded={completeIntro}
+        onError={completeIntro}
+      >
+        <source src="/media/uios-intro.mp4" type="video/mp4" />
+      </video>
+      <div className="universe-intro-actions">
+        <button type="button" onClick={() => setIntroVideoMuted((isMuted) => !isMuted)}>
+          {introVideoMuted ? "ENABLE SOUND" : "MUTE"}
+        </button>
+        <button type="button" onClick={completeIntro}>SKIP INTRO</button>
       </div>
     </div>
 
