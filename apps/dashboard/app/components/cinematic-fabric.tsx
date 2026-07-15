@@ -747,22 +747,21 @@ function CoreNode({ active, reducedMotion, onSelect, onHover }: { active: boolea
     <group ref={shell} onClick={select} onDoubleClick={handleDoubleClick} onPointerEnter={(event) => { event.stopPropagation(); setHovered(true); document.body.style.cursor = "pointer"; onHover("core"); }} onPointerLeave={() => { setHovered(false); document.body.style.cursor = ""; onHover(null); }}>
       <pointLight ref={lightRef} color="#00f0ff" intensity={active ? 38 : 28} distance={35} decay={1.5} />
       
-      {/* 1. Outer Evolving Glass Crystal Facets (Refractive Physical Glass) */}
+      {/* 1. Outer Evolving Glass Crystal Facets (Solid Faceted Diamond Core) */}
       <mesh>
         <icosahedronGeometry ref={shellGeomRef} args={[3.3, 0]} />
         <meshPhysicalMaterial 
           ref={matRef} 
-          color="#060c24" 
-          emissive="#002f3c"
-          emissiveIntensity={1.8}
-          roughness={0.1}
-          metalness={0.9}
+          color="#00182b" 
+          emissive="#00b8e6"
+          emissiveIntensity={2.6}
+          roughness={0.06}
+          metalness={0.96}
           clearcoat={1.0}
           clearcoatRoughness={0.05}
-          transmission={0.65}
-          thickness={2.2}
           transparent={true}
-          opacity={0.72}
+          opacity={0.88}
+          flatShading={true}
           depthWrite={true}
         />
       </mesh>
@@ -792,18 +791,19 @@ function CoreNode({ active, reducedMotion, onSelect, onHover }: { active: boolea
         <pointsMaterial ref={spineTipsMatRef} color="#ffffff" size={0.32} sizeAttenuation={true} transparent={true} opacity={0.92} depthWrite={false} blending={THREE.AdditiveBlending} />
       </points>
 
-      {/* 5. Nested Rotating Quasicrystal Cages */}
+      {/* 5. Nested Rotating Quasicrystal Cages (Solid glowing gears) */}
       <mesh ref={dodecaRef}>
         <dodecahedronGeometry args={[2.4, 0]} />
         <meshPhysicalMaterial 
           ref={dodecaMatRef} 
-          color="#002233" 
-          emissive="#00b4d8"
-          emissiveIntensity={2.5}
-          roughness={0.2}
-          metalness={0.8}
+          color="#0f0022" 
+          emissive="#6700e6"
+          emissiveIntensity={3.2}
+          roughness={0.08}
+          metalness={0.9}
           transparent 
-          opacity={0.6} 
+          opacity={0.85} 
+          flatShading={true}
           wireframe={false} 
         />
       </mesh>
@@ -815,7 +815,7 @@ function CoreNode({ active, reducedMotion, onSelect, onHover }: { active: boolea
           color="#00ffff" 
           wireframe 
           transparent 
-          opacity={0.3} 
+          opacity={0.4} 
           blending={THREE.AdditiveBlending} 
         />
       </mesh>
@@ -824,13 +824,14 @@ function CoreNode({ active, reducedMotion, onSelect, onHover }: { active: boolea
         <icosahedronGeometry args={[1.1, 0]} />
         <meshPhysicalMaterial 
           ref={innerIcosaMatRef} 
-          color="#1a0033" 
-          emissive="#a855f7"
-          emissiveIntensity={4.2}
-          roughness={0.15}
-          metalness={0.9}
+          color="#001e1e" 
+          emissive="#00ffff"
+          emissiveIntensity={4.8}
+          roughness={0.04}
+          metalness={0.98}
           transparent 
-          opacity={0.85} 
+          opacity={0.95} 
+          flatShading={true}
           wireframe={false} 
         />
       </mesh>
