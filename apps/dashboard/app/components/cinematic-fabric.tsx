@@ -977,7 +977,7 @@ function LivingNetwork({ reducedMotion }: { reducedMotion: boolean }) {
   </group>;
 }
 
-function CameraRig({ selected, focusVersion, scrollY, reducedMotion }: { selected: NodeId; focusVersion: number; scrollY: number; reducedMotion: boolean }) {
+function CameraRig({ selected, focusVersion, reducedMotion }: { selected: NodeId; focusVersion: number; reducedMotion: boolean }) {
   const { camera, gl } = useThree();
   const controls = useRef<ThreeOrbitControls | null>(null);
   const transition = useRef({ 
@@ -997,7 +997,7 @@ function CameraRig({ selected, focusVersion, scrollY, reducedMotion }: { selecte
     nextControls.dampingFactor = .055;
     nextControls.enablePan = true;
     nextControls.minDistance = 3.2;
-    nextControls.maxDistance = 64; // Increased max distance for galaxy zoom out
+    nextControls.maxDistance = 64; 
     nextControls.minPolarAngle = .16;
     nextControls.maxPolarAngle = Math.PI * .84;
     nextControls.target.set(0, 0, 0);
@@ -1088,24 +1088,6 @@ function CameraRig({ selected, focusVersion, scrollY, reducedMotion }: { selecte
       
       currentControls.target.x += Math.sin(elapsed * 0.22) * 0.001;
       currentControls.target.y += Math.cos(elapsed * 0.18) * 0.001;
-
-      // Scroll depth flight & cosmic galaxy zoom-out
-      if (scrollY > 0) {
-        const maxScroll = typeof window !== "undefined" ? document.documentElement.scrollHeight - window.innerHeight : 2000;
-        const scrollFactor = Math.min(1.0, scrollY / (maxScroll || 2000));
-
-        if (scrollFactor < 0.5) {
-          const t = scrollFactor * 2; // 0 to 1
-          camera.position.z = camera.position.z * (1.0 - t * 0.5);
-          camera.position.y = camera.position.y * (1.0 - t * 0.3) - t * 3.5;
-        } else {
-          const t = (scrollFactor - 0.5) * 2; // 0 to 1
-          const zoomDistance = 15.5 + t * 45.0; // zoom out from 15.5 to 60+ distance
-          const dir = camera.position.clone().normalize();
-          camera.position.copy(dir.multiplyScalar(zoomDistance));
-          currentControls.target.set(0, t * 8.0, 0);
-        }
-      }
     }
     currentControls.update();
   });
@@ -1113,7 +1095,7 @@ function CameraRig({ selected, focusVersion, scrollY, reducedMotion }: { selecte
   return null;
 }
 
-function UniverseScene({ selected, focusVersion, scrollY, reducedMotion, onSelect }: { selected: NodeId; focusVersion: number; scrollY: number; reducedMotion: boolean; onSelect: (id: NodeId) => void }) {
+function UniverseScene({ selected, focusVersion, reducedMotion, onSelect }: { selected: NodeId; focusVersion: number; reducedMotion: boolean; onSelect: (id: NodeId) => void }) {
   return <>
     <color attach="background" args={["#010207"]} />
     <fog attach="fog" args={["#010207", 18, 72]} />
@@ -1124,7 +1106,7 @@ function UniverseScene({ selected, focusVersion, scrollY, reducedMotion, onSelec
     <CoreNode active={selected === "core"} reducedMotion={reducedMotion} onSelect={onSelect} />
     {NODES.filter((node) => node.id !== "core").map((node) => <IntelligenceNode key={node.id} node={node} active={selected === node.id} reducedMotion={reducedMotion} onSelect={onSelect} />)}
     {selected !== "core" ? <LocalNodeWorld key={selected} node={NODE_MAP.get(selected)!} reducedMotion={reducedMotion} /> : null}
-    <CameraRig selected={selected} focusVersion={focusVersion} scrollY={scrollY} reducedMotion={reducedMotion} />
+    <CameraRig selected={selected} focusVersion={focusVersion} reducedMotion={reducedMotion} />
     <EffectComposer multisampling={0}><Bloom intensity={1.02} luminanceThreshold={.24} luminanceSmoothing={.72} mipmapBlur /></EffectComposer>
   </>;
 }
@@ -1172,13 +1154,120 @@ class CanvasErrorBoundary extends Component<{ children: React.ReactNode }, Canva
   }
 }
 
+interface NodeDetails {
+  status: string;
+  metricLabel: string;
+  metricValue: string;
+  features: string[];
+  ctaText: string;
+  ctaUrl: string;
+}
+
+const DETAIL_MAP: Record<NodeId, NodeDetails> = {
+  core: {
+    status: "STABLE",
+    metricLabel: "System Latency",
+    metricValue: "1.8ms",
+    features: [
+      "Orchestrates multi-agent routing bounds",
+      "Unified event bus & model abstraction",
+      "Automatic workflow lifespan controls"
+    ],
+    ctaText: "WATCH VISION OVERVIEW",
+    ctaUrl: "replay"
+  },
+  router: {
+    status: "ACTIVE",
+    metricLabel: "Traffic Load",
+    metricValue: "1,482 req/m",
+    features: [
+      "Dynamic prompt capability cost analysis",
+      "Real-time token estimation & routing",
+      "Automatic provider endpoint failover"
+    ],
+    ctaText: "CONFIGURE ROUTER RULES",
+    ctaUrl: "/platform"
+  },
+  memory: {
+    status: "SYNCED",
+    metricLabel: "Vector Cache",
+    metricValue: "852K items",
+    features: [
+      "pgvector similarity indexing",
+      "Cross-agent semantic history caches",
+      "Strict context boundary isolation"
+    ],
+    ctaText: "BROWSE CONTEXT STORE",
+    ctaUrl: "/platform"
+  },
+  aegis: {
+    status: "ENFORCING",
+    metricLabel: "Threat Mitigation",
+    metricValue: "Zero Events",
+    features: [
+      "Fail-closed edge policy validation",
+      "OIDC / SAML authentication enforcement",
+      "Model output boundary filtering"
+    ],
+    ctaText: "OPEN SECURITY CENTER",
+    ctaUrl: "/security"
+  },
+  openai: {
+    status: "HEALTHY",
+    metricLabel: "API Latency",
+    metricValue: "118ms",
+    features: [
+      "Direct channel for GPT-4o intelligence",
+      "Encrypted model credential vaults",
+      "Native structural parsing maps"
+    ],
+    ctaText: "VIEW OPENAI INTEGRATION",
+    ctaUrl: "/products"
+  },
+  anthropic: {
+    status: "HEALTHY",
+    metricLabel: "API Latency",
+    metricValue: "142ms",
+    features: [
+      "Direct channel for Claude 3.5 Sonnet",
+      "Detailed system context caching",
+      "Refined markdown token processing"
+    ],
+    ctaText: "VIEW ANTHROPIC INTEGRATION",
+    ctaUrl: "/products"
+  },
+  gemini: {
+    status: "HEALTHY",
+    metricLabel: "API Latency",
+    metricValue: "92ms",
+    features: [
+      "Direct channel for Gemini 1.5 Pro",
+      "High-context window execution",
+      "Multi-modal video & file parsing"
+    ],
+    ctaText: "VIEW GEMINI INTEGRATION",
+    ctaUrl: "/products"
+  },
+  mistral: {
+    status: "HEALTHY",
+    metricLabel: "API Latency",
+    metricValue: "105ms",
+    features: [
+      "Direct channel for Codestral models",
+      "Local/hosted execution fallback",
+      "Optimized developer tool mappings"
+    ],
+    ctaText: "VIEW MISTRAL INTEGRATION",
+    ctaUrl: "/products"
+  }
+};
+
 export function IntelligenceUniverse() {
   const [selected, setSelected] = useState<NodeId>("core");
   const [focusVersion, setFocusVersion] = useState(0);
   const [reducedMotion, setReducedMotion] = useState(false);
   const [ready, setReady] = useState(false);
   const [muted, setMuted] = useState(true);
-  const [scrollY, setScrollY] = useState(0);
   const [introVersion, setIntroVersion] = useState(0);
   const hudLockUntil = useRef(0);
   const node = NODE_MAP.get(selected)!;
@@ -1261,36 +1350,10 @@ export function IntelligenceUniverse() {
     });
   }, []);
 
-  // Scroll tracking to auto-focus sections and direct camera fly-through
-  useEffect(() => {
-    const handleScroll = () => {
-      const sy = window.scrollY;
-      setScrollY(sy);
-      
-      const maxScroll = document.documentElement.scrollHeight - window.innerHeight;
-      if (maxScroll > 100) {
-        const pct = sy / maxScroll;
-        if (pct < 0.15) {
-          setSelected("core");
-        } else if (pct < 0.42) {
-          setSelected("router");
-        } else if (pct < 0.68) {
-          setSelected("memory");
-        } else if (pct < 0.88) {
-          setSelected("aegis");
-        } else {
-          setSelected("gemini");
-        }
-      }
-    };
-    window.addEventListener("scroll", handleScroll, { passive: true });
-    return () => window.removeEventListener("scroll", handleScroll);
-  }, []);
-
   return <section className={`intelligence-universe${ready ? " universe-ready" : ""}`} aria-label="Interactive UIOS intelligence universe">
     <CanvasErrorBoundary key={introVersion}>
       <Canvas dpr={[1, 1.5]} camera={{ position: [0, 8, 40], fov: 48, near: .1, far: 120 }} gl={{ antialias: true, powerPreference: "high-performance" }}>
-        <Suspense fallback={null}><UniverseScene selected={selected} focusVersion={focusVersion} scrollY={scrollY} reducedMotion={reducedMotion} onSelect={selectSpatialNode} /></Suspense>
+        <Suspense fallback={null}><UniverseScene selected={selected} focusVersion={focusVersion} reducedMotion={reducedMotion} onSelect={selectSpatialNode} /></Suspense>
       </Canvas>
     </CanvasErrorBoundary>
 
@@ -1312,7 +1375,38 @@ export function IntelligenceUniverse() {
       <span className="universe-readout-category"><i style={{ background: node.color, boxShadow: `0 0 14px ${node.color}` }} />{node.category}</span>
       <h1>{node.title}</h1>
       <p>{node.description}</p>
-      <small>SELECT A NODE TO TRAVEL</small>
+      
+      <div className="universe-readout-divider" />
+      
+      <div className="universe-readout-metrics">
+        <div className="universe-readout-metric">
+          <span>Status</span>
+          <strong style={{ color: selected === "core" ? "#5bf0b0" : node.color }}>● {DETAIL_MAP[selected].status}</strong>
+        </div>
+        <div className="universe-readout-metric">
+          <span>{DETAIL_MAP[selected].metricLabel}</span>
+          <strong>{DETAIL_MAP[selected].metricValue}</strong>
+        </div>
+      </div>
+
+      <div className="universe-readout-features">
+        {DETAIL_MAP[selected].features.map((feat, idx) => (
+          <div className="universe-readout-feature" key={idx}>
+            <i style={{ background: node.color, boxShadow: `0 0 8px ${node.color}` }} />
+            <span>{feat}</span>
+          </div>
+        ))}
+      </div>
+
+      {DETAIL_MAP[selected].ctaUrl === "replay" ? (
+        <button type="button" className="universe-readout-cta" onClick={() => window.dispatchEvent(new CustomEvent("uios:replay-vision"))}>
+          {DETAIL_MAP[selected].ctaText}
+        </button>
+      ) : (
+        <button type="button" className="universe-readout-cta" onClick={() => window.location.href = DETAIL_MAP[selected].ctaUrl}>
+          {DETAIL_MAP[selected].ctaText}
+        </button>
+      )}
     </div>
 
     <div className="universe-controls" aria-label="Camera controls"><span>DRAG</span> ORBIT <i /> <span>SCROLL</span> ZOOM <i /> <span>CLICK</span> DISCOVER</div>
