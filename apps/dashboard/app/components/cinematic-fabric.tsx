@@ -227,7 +227,7 @@ type UniverseNode = {
 };
 
 const NODES: readonly UniverseNode[] = [
-  { id: "core", title: "Intelligence Core", shortTitle: "UIOS CORE", category: "SYSTEM SUN", description: "The living center of the intelligence universe. Every route, memory, and policy boundary converges here.", color: "#ffc52f", position: [0, 0, 0], radius: 2.25, kind: "core" },
+  { id: "core", title: "Mycelium Core", shortTitle: "MYCELIUM CORE", category: "MYCELIAL ROOT", description: "The living, organic neural mycelium of UIOS. Orchestrates real-time model routing, memory cache sharing, and secure policy boundaries across the entire distributed intelligence ecosystem.", color: "#00f0ff", position: [0, 0, 0], radius: 3.3, kind: "core" },
   { id: "router", title: "Universal Router", shortTitle: "ROUTER", category: "ROUTER ZONE", description: "Intent moves through this zone toward the right model, agent, tool, or workflow.", color: "#3c9dff", position: [0, 10, -13], radius: .62, kind: "zone" },
   { id: "aegis", title: "Aegis Security", shortTitle: "AEGIS", category: "SECURITY ZONE", description: "The policy boundary surrounding every intelligence path, approval, and protected action.", color: "#25c8ff", position: [-13, -3.6, -9], radius: .66, kind: "zone" },
   { id: "memory", title: "Shared Memory", shortTitle: "MEMORY", category: "MEMORY ZONE", description: "A connected context field that keeps intelligence coherent across models, agents, and workflows.", color: "#a855f7", position: [13.5, -3.1, -10], radius: .66, kind: "zone" },
@@ -451,7 +451,7 @@ function GalaxyField({ node, active, reducedMotion }: { node: UniverseNode; acti
   </group>;
 }
 
-function CoreNode({ active, reducedMotion, onSelect }: { active: boolean; reducedMotion: boolean; onSelect: (id: NodeId) => void }) {
+function CoreNode({ active, reducedMotion, onSelect, onHover }: { active: boolean; reducedMotion: boolean; onSelect: (id: NodeId) => void; onHover: (id: NodeId | null) => void }) {
   const shell = useRef<THREE.Group>(null);
   const rings = useRef<THREE.Group>(null);
   const lightRef = useRef<THREE.PointLight>(null);
@@ -527,6 +527,12 @@ function CoreNode({ active, reducedMotion, onSelect }: { active: boolean; reduce
     return { positions, original };
   }, []);
 
+  const pointsGeom = useMemo(() => {
+    const geom = new THREE.BufferGeometry();
+    geom.setAttribute("position", new THREE.BufferAttribute(gyroidParticles.positions, 3));
+    return geom;
+  }, [gyroidParticles]);
+
   const initGeometries = useCallback(() => {
     if (shellGeomRef.current && !originalShellPositions.current) {
       originalShellPositions.current = shellGeomRef.current.attributes.position.array.slice() as Float32Array;
@@ -569,65 +575,71 @@ function CoreNode({ active, reducedMotion, onSelect }: { active: boolean; reduce
     if (shellGeomRef.current && originalShellPositions.current && !reducedMotion) {
       const geom = shellGeomRef.current;
       const pos = geom.attributes.position;
-      const orig = originalShellPositions.current;
-      for (let i = 0; i < pos.count; i++) {
-        const ox = orig[i * 3];
-        const oy = orig[i * 3 + 1];
-        const oz = orig[i * 3 + 2];
+      if (pos && pos.array) {
+        const orig = originalShellPositions.current;
+        for (let i = 0; i < pos.count; i++) {
+          const ox = orig[i * 3];
+          const oy = orig[i * 3 + 1];
+          const oz = orig[i * 3 + 2];
 
-        const wave = Math.sin(time * 1.6 + ox * 1.5 + oy * 1.1) * 0.15 + Math.cos(time * 0.9 + oz * 1.4) * 0.06;
-        const waveY = Math.cos(time * 1.3 + oy * 1.8 + oz * 0.9) * 0.15 + Math.sin(time * 0.8 + ox * 1.2) * 0.06;
-        const waveZ = Math.sin(time * 1.9 + oz * 1.3 + ox * 1.9) * 0.15 + Math.cos(time * 1.1 + oy * 1.5) * 0.06;
+          const wave = Math.sin(time * 1.6 + ox * 1.5 + oy * 1.1) * 0.15 + Math.cos(time * 0.9 + oz * 1.4) * 0.06;
+          const waveY = Math.cos(time * 1.3 + oy * 1.8 + oz * 0.9) * 0.15 + Math.sin(time * 0.8 + ox * 1.2) * 0.06;
+          const waveZ = Math.sin(time * 1.9 + oz * 1.3 + ox * 1.9) * 0.15 + Math.cos(time * 1.1 + oy * 1.5) * 0.06;
 
-        pos.setXYZ(i, ox + wave, oy + waveY, oz + waveZ);
+          pos.setXYZ(i, ox + wave, oy + waveY, oz + waveZ);
+        }
+        pos.needsUpdate = true;
+        geom.computeVertexNormals();
       }
-      pos.needsUpdate = true;
-      geom.computeVertexNormals();
     }
 
     // Organic Edge Deformation (Sync wireframe outline)
     if (edgeGeomRef.current && originalEdgePositions.current && !reducedMotion) {
       const geom = edgeGeomRef.current;
       const pos = geom.attributes.position;
-      const orig = originalEdgePositions.current;
-      for (let i = 0; i < pos.count; i++) {
-        const ox = orig[i * 3];
-        const oy = orig[i * 3 + 1];
-        const oz = orig[i * 3 + 2];
+      if (pos && pos.array) {
+        const orig = originalEdgePositions.current;
+        for (let i = 0; i < pos.count; i++) {
+          const ox = orig[i * 3];
+          const oy = orig[i * 3 + 1];
+          const oz = orig[i * 3 + 2];
 
-        const wave = Math.sin(time * 1.6 + ox * 1.5 + oy * 1.1) * 0.15 + Math.cos(time * 0.9 + oz * 1.4) * 0.06;
-        const waveY = Math.cos(time * 1.3 + oy * 1.8 + oz * 0.9) * 0.15 + Math.sin(time * 0.8 + ox * 1.2) * 0.06;
-        const waveZ = Math.sin(time * 1.9 + oz * 1.3 + ox * 1.9) * 0.15 + Math.cos(time * 1.1 + oy * 1.5) * 0.06;
+          const wave = Math.sin(time * 1.6 + ox * 1.5 + oy * 1.1) * 0.15 + Math.cos(time * 0.9 + oz * 1.4) * 0.06;
+          const waveY = Math.cos(time * 1.3 + oy * 1.8 + oz * 0.9) * 0.15 + Math.sin(time * 0.8 + ox * 1.2) * 0.06;
+          const waveZ = Math.sin(time * 1.9 + oz * 1.3 + ox * 1.9) * 0.15 + Math.cos(time * 1.1 + oy * 1.5) * 0.06;
 
-        const scale = 1.002;
-        pos.setXYZ(i, (ox + wave) * scale, (oy + waveY) * scale, (oz + waveZ) * scale);
+          const scale = 1.002;
+          pos.setXYZ(i, (ox + wave) * scale, (oy + waveY) * scale, (oz + waveZ) * scale);
+        }
+        pos.needsUpdate = true;
       }
-      pos.needsUpdate = true;
     }
 
     // Radiolarian Spines (bases track morphed shell, tips breathe)
     if (spinesGeomRef.current && originalShellPositions.current && !reducedMotion) {
       const geom = spinesGeomRef.current;
       const pos = geom.attributes.position;
-      const arr = pos.array as Float32Array;
-      const shellPos = shellGeomRef.current?.attributes.position.array as Float32Array;
+      if (pos && pos.array) {
+        const arr = pos.array as Float32Array;
+        const shellPos = shellGeomRef.current?.attributes.position.array as Float32Array;
 
-      if (shellPos) {
-        for (let i = 0; i < 12; i++) {
-          const x = shellPos[i * 3];
-          const y = shellPos[i * 3 + 1];
-          const z = shellPos[i * 3 + 2];
+        if (shellPos) {
+          for (let i = 0; i < 12; i++) {
+            const x = shellPos[i * 3];
+            const y = shellPos[i * 3 + 1];
+            const z = shellPos[i * 3 + 2];
 
-          arr[i * 6] = x;
-          arr[i * 6 + 1] = y;
-          arr[i * 6 + 2] = z;
+            arr[i * 6] = x;
+            arr[i * 6 + 1] = y;
+            arr[i * 6 + 2] = z;
 
-          const spineScale = 1.35 + Math.sin(time * 2.2 + i) * 0.18;
-          arr[i * 6 + 3] = x * spineScale;
-          arr[i * 6 + 4] = y * spineScale;
-          arr[i * 6 + 5] = z * spineScale;
+            const spineScale = 1.35 + Math.sin(time * 2.2 + i) * 0.18;
+            arr[i * 6 + 3] = x * spineScale;
+            arr[i * 6 + 4] = y * spineScale;
+            arr[i * 6 + 5] = z * spineScale;
+          }
+          pos.needsUpdate = true;
         }
-        pos.needsUpdate = true;
       }
     }
 
@@ -635,56 +647,60 @@ function CoreNode({ active, reducedMotion, onSelect }: { active: boolean; reduce
     if (spineTipsGeomRef.current && shellGeomRef.current && !reducedMotion) {
       const geom = spineTipsGeomRef.current;
       const pos = geom.attributes.position;
-      const arr = pos.array as Float32Array;
-      const shellPos = shellGeomRef.current.attributes.position.array as Float32Array;
-      for (let i = 0; i < 12; i++) {
-        const x = shellPos[i * 3];
-        const y = shellPos[i * 3 + 1];
-        const z = shellPos[i * 3 + 2];
-        const spineScale = 1.35 + Math.sin(time * 2.2 + i) * 0.18;
-        arr[i * 3] = x * spineScale;
-        arr[i * 3 + 1] = y * spineScale;
-        arr[i * 3 + 2] = z * spineScale;
+      if (pos && pos.array) {
+        const arr = pos.array as Float32Array;
+        const shellPos = shellGeomRef.current.attributes.position.array as Float32Array;
+        for (let i = 0; i < 12; i++) {
+          const x = shellPos[i * 3];
+          const y = shellPos[i * 3 + 1];
+          const z = shellPos[i * 3 + 2];
+          const spineScale = 1.35 + Math.sin(time * 2.2 + i) * 0.18;
+          arr[i * 3] = x * spineScale;
+          arr[i * 3 + 1] = y * spineScale;
+          arr[i * 3 + 2] = z * spineScale;
+        }
+        pos.needsUpdate = true;
       }
-      pos.needsUpdate = true;
     }
 
     // Gyroid vector field flow drift
     if (pointsGeomRef.current && !reducedMotion) {
       const geom = pointsGeomRef.current;
       const pos = geom.attributes.position;
-      const arr = pos.array as Float32Array;
-      const orig = gyroidParticles.original;
-      
-      for (let i = 0; i < pos.count; i++) {
-        let x = arr[i * 3];
-        let y = arr[i * 3 + 1];
-        let z = arr[i * 3 + 2];
-
-        const sx = x * 2.2;
-        const sy = y * 2.2;
-        const sz = z * 2.2;
+      if (pos && pos.array) {
+        const arr = pos.array as Float32Array;
+        const orig = gyroidParticles.original;
         
-        const gx = Math.cos(sx) * Math.sin(sy) - Math.sin(sx) * Math.cos(sz);
-        const gy = Math.cos(sy) * Math.sin(sz) - Math.sin(sy) * Math.cos(sx);
-        const gz = Math.cos(sz) * Math.sin(sx) - Math.sin(sz) * Math.cos(sy);
+        for (let i = 0; i < pos.count; i++) {
+          let x = arr[i * 3];
+          let y = arr[i * 3 + 1];
+          let z = arr[i * 3 + 2];
 
-        x += gx * delta * 1.5;
-        y += gy * delta * 1.5;
-        z += gz * delta * 1.5;
+          const sx = x * 2.2;
+          const sy = y * 2.2;
+          const sz = z * 2.2;
+          
+          const gx = Math.cos(sx) * Math.sin(sy) - Math.sin(sx) * Math.cos(sz);
+          const gy = Math.cos(sy) * Math.sin(sz) - Math.sin(sy) * Math.cos(sx);
+          const gz = Math.cos(sz) * Math.sin(sx) - Math.sin(sz) * Math.cos(sy);
 
-        const distSq = x * x + y * y + z * z;
-        if (distSq > 7.29) {
-          x = orig[i * 3];
-          y = orig[i * 3 + 1];
-          z = orig[i * 3 + 2];
+          x += gx * delta * 1.5;
+          y += gy * delta * 1.5;
+          z += gz * delta * 1.5;
+
+          const distSq = x * x + y * y + z * z;
+          if (distSq > 7.29) {
+            x = orig[i * 3];
+            y = orig[i * 3 + 1];
+            z = orig[i * 3 + 2];
+          }
+
+          arr[i * 3] = x;
+          arr[i * 3 + 1] = y;
+          arr[i * 3 + 2] = z;
         }
-
-        arr[i * 3] = x;
-        arr[i * 3 + 1] = y;
-        arr[i * 3 + 2] = z;
+        pos.needsUpdate = true;
       }
-      pos.needsUpdate = true;
     }
 
     // Rotate internal cages in opposite directions (quasicrystal order)
@@ -721,7 +737,7 @@ function CoreNode({ active, reducedMotion, onSelect }: { active: boolean; reduce
   };
 
   return <group position={node.position}>
-    <group ref={shell} onClick={select} onDoubleClick={handleDoubleClick} onPointerEnter={(event) => { event.stopPropagation(); setHovered(true); document.body.style.cursor = "pointer"; }} onPointerLeave={() => { setHovered(false); document.body.style.cursor = ""; }}>
+    <group ref={shell} onClick={select} onDoubleClick={handleDoubleClick} onPointerEnter={(event) => { event.stopPropagation(); setHovered(true); document.body.style.cursor = "pointer"; onHover("core"); }} onPointerLeave={() => { setHovered(false); document.body.style.cursor = ""; onHover(null); }}>
       <pointLight ref={lightRef} color="#00f0ff" intensity={active ? 38 : 28} distance={35} decay={1.5} />
       
       {/* 1. Outer Evolving Glass Crystal Facets (Standard Transparent Shader) */}
@@ -773,9 +789,7 @@ function CoreNode({ active, reducedMotion, onSelect }: { active: boolean; reduce
 
       {/* 6. Gyroid Synaptic Swarm (Drifting internal energy paths) */}
       <points>
-        <bufferGeometry ref={pointsGeomRef} attach="geometry">
-          <bufferAttribute attach="attributes-position" args={[gyroidParticles.positions, 3]} />
-        </bufferGeometry>
+        <primitive ref={pointsGeomRef} object={pointsGeom} attach="geometry" />
         <pointsMaterial ref={pointsMatRef} color="#00ffff" size={0.065} sizeAttenuation={true} transparent={true} opacity={0.82} depthWrite={false} blending={THREE.AdditiveBlending} />
       </points>
     </group>
@@ -850,7 +864,7 @@ function ZoneDetails({ id, color, active, reducedMotion }: { id: NodeId; color: 
   return null;
 }
 
-function IntelligenceNode({ node, active, reducedMotion, onSelect }: { node: UniverseNode; active: boolean; reducedMotion: boolean; onSelect: (id: NodeId) => void }) {
+function IntelligenceNode({ node, active, reducedMotion, onSelect, onHover }: { node: UniverseNode; active: boolean; reducedMotion: boolean; onSelect: (id: NodeId) => void; onHover: (id: NodeId | null) => void }) {
   const ref = useRef<THREE.Group>(null);
   const lightRef = useRef<THREE.PointLight>(null);
   const matRef = useRef<THREE.MeshPhysicalMaterial>(null);
@@ -913,7 +927,7 @@ function IntelligenceNode({ node, active, reducedMotion, onSelect }: { node: Uni
 
   return <group position={node.position}>
     <GalaxyField node={node} active={active} reducedMotion={reducedMotion} />
-    <group ref={ref} onClick={select} onDoubleClick={handleDoubleClick} onPointerEnter={(event) => { event.stopPropagation(); setHovered(true); document.body.style.cursor = "pointer"; }} onPointerLeave={() => { setHovered(false); document.body.style.cursor = ""; }}>
+    <group ref={ref} onClick={select} onDoubleClick={handleDoubleClick} onPointerEnter={(event) => { event.stopPropagation(); setHovered(true); document.body.style.cursor = "pointer"; onHover(node.id); }} onPointerLeave={() => { setHovered(false); document.body.style.cursor = ""; onHover(null); }}>
       <pointLight ref={lightRef} color={node.color} intensity={active ? 5.5 : 2.6} distance={node.kind === "zone" ? 8 : 4.5} />
       <mesh>
         <sphereGeometry args={[node.radius, 28, 28]} />
@@ -1311,7 +1325,7 @@ function CameraRig({ selected, focusVersion, reducedMotion }: { selected: NodeId
   return null;
 }
 
-function UniverseScene({ selected, focusVersion, hasWebGL2, reducedMotion, onSelect }: { selected: NodeId; focusVersion: number; hasWebGL2: boolean; reducedMotion: boolean; onSelect: (id: NodeId) => void }) {
+function UniverseScene({ selected, focusVersion, hasWebGL2, reducedMotion, onSelect, onHover }: { selected: NodeId; focusVersion: number; hasWebGL2: boolean; reducedMotion: boolean; onSelect: (id: NodeId) => void; onHover: (id: NodeId | null) => void }) {
   return <>
     <color attach="background" args={["#010207"]} />
     <fog attach="fog" args={["#010207", 18, 72]} />
@@ -1319,8 +1333,8 @@ function UniverseScene({ selected, focusVersion, hasWebGL2, reducedMotion, onSel
     <directionalLight color="#7896ff" intensity={.42} position={[4, 8, 8]} />
     <StarField reducedMotion={reducedMotion} />
     <LivingNetwork reducedMotion={reducedMotion} />
-    <CoreNode active={selected === "core"} reducedMotion={reducedMotion} onSelect={onSelect} />
-    {NODES.filter((node) => node.id !== "core").map((node) => <IntelligenceNode key={node.id} node={node} active={selected === node.id} reducedMotion={reducedMotion} onSelect={onSelect} />)}
+    <CoreNode active={selected === "core"} reducedMotion={reducedMotion} onSelect={onSelect} onHover={onHover} />
+    {NODES.filter((node) => node.id !== "core").map((node) => <IntelligenceNode key={node.id} node={node} active={selected === node.id} reducedMotion={reducedMotion} onSelect={onSelect} onHover={onHover} />)}
     {selected !== "core" ? <LocalNodeWorld key={selected} node={NODE_MAP.get(selected)!} reducedMotion={reducedMotion} /> : null}
     <CameraRig selected={selected} focusVersion={focusVersion} reducedMotion={reducedMotion} />
     {hasWebGL2 ? (
@@ -1386,12 +1400,12 @@ interface NodeDetails {
 const DETAIL_MAP: Record<NodeId, NodeDetails> = {
   core: {
     status: "STABLE",
-    metricLabel: "System Latency",
-    metricValue: "1.8ms",
+    metricLabel: "Mycelial Nodes",
+    metricValue: "1,248 Connected",
     features: [
-      "Orchestrates multi-agent routing bounds",
-      "Unified event bus & model abstraction",
-      "Automatic workflow lifespan controls"
+      "Symbiotic routing of multi-agent neural paths",
+      "Unified mycelial event bus & model abstraction",
+      "Dynamic vector & semantic context sharing across nodes"
     ],
     ctaText: "WATCH VISION OVERVIEW",
     ctaUrl: "replay"
@@ -1497,14 +1511,17 @@ export function IntelligenceUniverse() {
     }
   }, []);
 
-  const [selected, setSelected] = useState<NodeId>("core");
+  const [hoveredNode, setHoveredNode] = useState<NodeId | null>(null);
+  const [clickedNode, setClickedNode] = useState<NodeId | null>(null);
   const [focusVersion, setFocusVersion] = useState(0);
   const [reducedMotion, setReducedMotion] = useState(false);
   const [ready, setReady] = useState(false);
   const [muted, setMuted] = useState(true);
   const [introVersion, setIntroVersion] = useState(0);
   const hudLockUntil = useRef(0);
-  const node = NODE_MAP.get(selected)!;
+
+  const activeId = hoveredNode || clickedNode;
+  const node = NODE_MAP.get(activeId || "core")!;
 
   // Listen to replay events from the landing overlay
   useEffect(() => {
@@ -1554,7 +1571,7 @@ export function IntelligenceUniverse() {
 
   const selectNode = useCallback((id: NodeId) => {
     document.body.style.cursor = "";
-    setSelected(id);
+    setClickedNode(id);
     setFocusVersion((version) => version + 1);
     
     const index = NODES.findIndex((item) => item.id === id);
@@ -1591,25 +1608,38 @@ export function IntelligenceUniverse() {
   return <section className={`intelligence-universe${ready ? " universe-ready" : ""}`} aria-label="Interactive UIOS intelligence universe">
     <CanvasErrorBoundary key={introVersion}>
       <Canvas dpr={[1, 1.5]} camera={{ position: [0, 8, 40], fov: 48, near: .1, far: 120 }} gl={{ antialias: true, powerPreference: "high-performance" }} style={{ width: "100%", height: "100%", position: "absolute", top: 0, left: 0 }}>
-        <Suspense fallback={null}><UniverseScene selected={selected} focusVersion={focusVersion} hasWebGL2={hasWebGL2} reducedMotion={reducedMotion} onSelect={selectSpatialNode} /></Suspense>
+        <Suspense fallback={null}><UniverseScene selected={clickedNode || "core"} focusVersion={focusVersion} hasWebGL2={hasWebGL2} reducedMotion={reducedMotion} onSelect={selectSpatialNode} onHover={setHoveredNode} /></Suspense>
       </Canvas>
     </CanvasErrorBoundary>
 
     <header className="universe-header" onPointerDown={(event) => event.stopPropagation()}>
-      <button type="button" className="universe-brand" onClick={() => navigateNode("core")} aria-label="Return to the UIOS Intelligence Core"><span>UI</span><i />S<small>INTELLIGENCE UNIVERSE</small></button>
+      <button type="button" className="universe-brand" onClick={() => { setClickedNode("core"); setHoveredNode(null); }} aria-label="Return to the UIOS Intelligence Core"><span>UI</span><i />S<small>MYCELIAL UNIVERSE</small></button>
       <div className="universe-coordinates"><i /> LIVE FABRIC <span>WORLD 003</span></div>
       <div className="universe-header-actions" style={{ justifySelf: "end", display: "flex", gap: "10px", pointerEvents: "auto" }}>
         <button type="button" className={`universe-sound-toggle ${muted ? "" : "active"}`} onClick={toggleMute} aria-label={muted ? "Enable universe audio" : "Disable universe audio"}>{muted ? "🔇 AUDIO MUTED" : "🔊 AUDIO ACTIVE"}</button>
-        <button type="button" className="universe-reset" onClick={() => navigateNode("core")}>RESET VIEW <span>⌖</span></button>
+        <button type="button" className="universe-reset" onClick={() => { setClickedNode(null); setHoveredNode(null); }}>RESET VIEW <span>⌖</span></button>
       </div>
     </header>
 
     <nav className="universe-index" aria-label="Intelligence universe locations" onPointerDown={(event) => event.stopPropagation()}>
       <span className="universe-index-title">EXPLORE ZONES</span>
-      {NODES.map((item, index) => <button type="button" className={selected === item.id ? "active" : ""} aria-pressed={selected === item.id} onClick={() => navigateNode(item.id)} key={item.id}><span>{String(index + 1).padStart(2, "0")}</span>{item.shortTitle}</button>)}
+      {NODES.map((item, index) => (
+        <button 
+          type="button" 
+          className={clickedNode === item.id ? "active" : ""} 
+          aria-pressed={clickedNode === item.id} 
+          onClick={() => navigateNode(item.id)} 
+          onPointerEnter={() => setHoveredNode(item.id)}
+          onPointerLeave={() => setHoveredNode(null)}
+          key={item.id}
+        >
+          <span>{String(index + 1).padStart(2, "0")}</span>
+          {item.shortTitle}
+        </button>
+      ))}
     </nav>
 
-    <div className="universe-readout" aria-live="polite">
+    <div className={`universe-readout ${activeId ? "visible" : ""}`} aria-live="polite">
       <span className="universe-readout-category"><i style={{ background: node.color, boxShadow: `0 0 14px ${node.color}` }} />{node.category}</span>
       <h1>{node.title}</h1>
       <p>{node.description}</p>
@@ -1619,16 +1649,16 @@ export function IntelligenceUniverse() {
       <div className="universe-readout-metrics">
         <div className="universe-readout-metric">
           <span>Status</span>
-          <strong style={{ color: selected === "core" ? "#5bf0b0" : node.color }}>● {DETAIL_MAP[selected].status}</strong>
+          <strong style={{ color: (activeId || "core") === "core" ? "#5bf0b0" : node.color }}>● {DETAIL_MAP[activeId || "core"].status}</strong>
         </div>
         <div className="universe-readout-metric">
-          <span>{DETAIL_MAP[selected].metricLabel}</span>
-          <strong>{DETAIL_MAP[selected].metricValue}</strong>
+          <span>{DETAIL_MAP[activeId || "core"].metricLabel}</span>
+          <strong>{DETAIL_MAP[activeId || "core"].metricValue}</strong>
         </div>
       </div>
 
       <div className="universe-readout-features">
-        {DETAIL_MAP[selected].features.map((feat, idx) => (
+        {DETAIL_MAP[activeId || "core"].features.map((feat, idx) => (
           <div className="universe-readout-feature" key={idx}>
             <i style={{ background: node.color, boxShadow: `0 0 8px ${node.color}` }} />
             <span>{feat}</span>
@@ -1636,13 +1666,13 @@ export function IntelligenceUniverse() {
         ))}
       </div>
 
-      {DETAIL_MAP[selected].ctaUrl === "replay" ? (
+      {DETAIL_MAP[activeId || "core"].ctaUrl === "replay" ? (
         <button type="button" className="universe-readout-cta" onClick={() => window.dispatchEvent(new CustomEvent("uios:replay-vision"))}>
-          {DETAIL_MAP[selected].ctaText}
+          {DETAIL_MAP[activeId || "core"].ctaText}
         </button>
       ) : (
-        <button type="button" className="universe-readout-cta" onClick={() => window.location.href = DETAIL_MAP[selected].ctaUrl}>
-          {DETAIL_MAP[selected].ctaText}
+        <button type="button" className="universe-readout-cta" onClick={() => window.location.href = DETAIL_MAP[activeId || "core"].ctaUrl}>
+          {DETAIL_MAP[activeId || "core"].ctaText}
         </button>
       )}
     </div>
