@@ -453,34 +453,79 @@ function GalaxyField({ node, active, reducedMotion }: { node: UniverseNode; acti
 
 function CoreNode({ active, reducedMotion, onSelect }: { active: boolean; reducedMotion: boolean; onSelect: (id: NodeId) => void }) {
   const shell = useRef<THREE.Group>(null);
-  const fire = useRef<THREE.Group>(null);
-  const fireOpposite = useRef<THREE.Group>(null);
   const rings = useRef<THREE.Group>(null);
   const lightRef = useRef<THREE.PointLight>(null);
   const matRef = useRef<THREE.MeshPhysicalMaterial>(null);
-  const innerMeshRef = useRef<THREE.Mesh>(null);
-  const fireMatRef = useRef<THREE.MeshBasicMaterial>(null);
-  const fireOppMatRef = useRef<THREE.MeshBasicMaterial>(null);
-  const coronaMatRef = useRef<THREE.PointsMaterial>(null);
-  const ring1MatRef = useRef<THREE.MeshBasicMaterial>(null);
-  const ring2MatRef = useRef<THREE.MeshBasicMaterial>(null);
-  const ring3MatRef = useRef<THREE.MeshBasicMaterial>(null);
+  const dodecaRef = useRef<THREE.Mesh>(null);
+  const innerIcosaRef = useRef<THREE.Mesh>(null);
+  
+  const dodecaMatRef = useRef<THREE.MeshBasicMaterial>(null);
+  const innerIcosaMatRef = useRef<THREE.MeshBasicMaterial>(null);
+  const spinesMatRef = useRef<THREE.LineBasicMaterial>(null);
+  const spineTipsMatRef = useRef<THREE.PointsMaterial>(null);
+  const pointsMatRef = useRef<THREE.PointsMaterial>(null);
+  
+  const shellGeomRef = useRef<THREE.BufferGeometry>(null);
+  const spinesGeomRef = useRef<THREE.BufferGeometry>(null);
+  const spineTipsGeomRef = useRef<THREE.BufferGeometry>(null);
+  const pointsGeomRef = useRef<THREE.BufferGeometry>(null);
 
+  const originalShellPositions = useRef<Float32Array | null>(null);
   const [hovered, setHovered] = useState(false);
   const node = NODE_MAP.get("core")!;
 
-  const corona = useMemo(() => {
-    const random = seededRandom(0x94f11);
-    const radius = 2.45;
-    const points = new Float32Array(340 * 3);
-    for (let index = 0; index < 340; index += 1) {
-      const theta = random() * Math.PI * 2;
-      const phi = Math.acos(2 * random() - 1);
-      points[index * 3] = radius * Math.sin(phi) * Math.cos(theta);
-      points[index * 3 + 1] = radius * Math.cos(phi);
-      points[index * 3 + 2] = radius * Math.sin(phi) * Math.sin(theta);
+  const { spinesGeom, originalSpines } = useMemo(() => {
+    const geom = new THREE.BufferGeometry();
+    const positions = new Float32Array(12 * 2 * 3);
+    const outer = new THREE.IcosahedronGeometry(2.3, 0);
+    const outerPos = outer.attributes.position;
+    for (let i = 0; i < 12; i++) {
+      const x = outerPos.getX(i);
+      const y = outerPos.getY(i);
+      const z = outerPos.getZ(i);
+      positions[i * 6] = x;
+      positions[i * 6 + 1] = y;
+      positions[i * 6 + 2] = z;
+      positions[i * 6 + 3] = x * 1.5;
+      positions[i * 6 + 4] = y * 1.5;
+      positions[i * 6 + 5] = z * 1.5;
     }
-    return points;
+    geom.setAttribute("position", new THREE.BufferAttribute(positions, 3));
+    return { spinesGeom: geom, originalSpines: positions.slice() };
+  }, []);
+
+  const tipsGeom = useMemo(() => {
+    const geom = new THREE.BufferGeometry();
+    const positions = new Float32Array(12 * 3);
+    geom.setAttribute("position", new THREE.BufferAttribute(positions, 3));
+    return geom;
+  }, []);
+
+  const gyroidParticles = useMemo(() => {
+    const count = 180;
+    const positions = new Float32Array(count * 3);
+    const original = new Float32Array(count * 3);
+    for (let i = 0; i < count; i++) {
+      const theta = Math.random() * Math.PI * 2;
+      const phi = Math.acos(2.0 * Math.random() - 1.0);
+      const r = Math.pow(Math.random(), 1 / 3) * 1.6;
+      const x = r * Math.sin(phi) * Math.cos(theta);
+      const y = r * Math.sin(phi) * Math.sin(theta);
+      const z = r * Math.cos(phi);
+      positions[i * 3] = x;
+      positions[i * 3 + 1] = y;
+      positions[i * 3 + 2] = z;
+      original[i * 3] = x;
+      original[i * 3 + 1] = y;
+      original[i * 3 + 2] = z;
+    }
+    return { positions, original };
+  }, []);
+
+  const initGeometries = useCallback(() => {
+    if (shellGeomRef.current && !originalShellPositions.current) {
+      originalShellPositions.current = shellGeomRef.current.attributes.position.array.slice() as Float32Array;
+    }
   }, []);
 
   const mouse3D = useMemo(() => new THREE.Vector3(), []);
@@ -489,6 +534,8 @@ function CoreNode({ active, reducedMotion, onSelect }: { active: boolean; reduce
   useFrame((state, delta) => {
     const time = state.clock.elapsedTime;
     const flicker = getIntroFlicker(time);
+
+    initGeometries();
 
     // Calculate mouse intersection in 3D (camera perpendicular plane)
     state.camera.getWorldDirection(normal);
@@ -500,37 +547,141 @@ function CoreNode({ active, reducedMotion, onSelect }: { active: boolean; reduce
     const dist = nodePos.distanceTo(mouse3D);
     const influence = dist < 7.0 ? Math.max(0, 1 - dist / 7.0) : 0;
 
-    if (lightRef.current) lightRef.current.intensity = (active ? 34 : 25) * flicker + influence * 15;
-    if (matRef.current) matRef.current.emissiveIntensity = (active ? 3.5 : 2.8) * flicker + influence * 2.2;
-    if (innerMeshRef.current) innerMeshRef.current.scale.setScalar(flicker + influence * 0.15);
-    if (fireMatRef.current) fireMatRef.current.opacity = 0.45 * flicker;
-    if (fireOppMatRef.current) fireOppMatRef.current.opacity = 0.26 * flicker;
-    if (coronaMatRef.current) coronaMatRef.current.opacity = 0.88 * flicker;
-    if (ring1MatRef.current) ring1MatRef.current.opacity = 0.46 * flicker;
-    if (ring2MatRef.current) ring2MatRef.current.opacity = 0.25 * flicker;
-    if (ring3MatRef.current) ring3MatRef.current.opacity = 0.18 * flicker;
+    if (lightRef.current) lightRef.current.intensity = (active ? 38 : 28) * flicker + influence * 15;
+    if (matRef.current) matRef.current.emissiveIntensity = (active ? 2.5 : 1.8) * flicker + influence * 2.0;
+    
+    if (dodecaMatRef.current) dodecaMatRef.current.opacity = 0.3 * flicker;
+    if (innerIcosaMatRef.current) innerIcosaMatRef.current.opacity = 0.42 * flicker;
+    if (spinesMatRef.current) spinesMatRef.current.opacity = 0.55 * flicker;
+    if (spineTipsMatRef.current) spineTipsMatRef.current.opacity = 0.92 * flicker;
+    if (pointsMatRef.current) pointsMatRef.current.opacity = 0.82 * flicker;
+
+    // Organic Crystal Deformation (Rebuilding vertices organically)
+    if (shellGeomRef.current && originalShellPositions.current && !reducedMotion) {
+      const geom = shellGeomRef.current;
+      const pos = geom.attributes.position;
+      const orig = originalShellPositions.current;
+      for (let i = 0; i < pos.count; i++) {
+        const ox = orig[i * 3];
+        const oy = orig[i * 3 + 1];
+        const oz = orig[i * 3 + 2];
+
+        const wave = Math.sin(time * 1.6 + ox * 1.5 + oy * 1.1) * 0.15 + Math.cos(time * 0.9 + oz * 1.4) * 0.06;
+        const waveY = Math.cos(time * 1.3 + oy * 1.8 + oz * 0.9) * 0.15 + Math.sin(time * 0.8 + ox * 1.2) * 0.06;
+        const waveZ = Math.sin(time * 1.9 + oz * 1.3 + ox * 1.9) * 0.15 + Math.cos(time * 1.1 + oy * 1.5) * 0.06;
+
+        pos.setXYZ(i, ox + wave, oy + waveY, oz + waveZ);
+      }
+      pos.needsUpdate = true;
+      geom.computeVertexNormals();
+    }
+
+    // Radiolarian Spines (bases track morphed shell, tips breathe)
+    if (spinesGeomRef.current && originalShellPositions.current && !reducedMotion) {
+      const geom = spinesGeomRef.current;
+      const pos = geom.attributes.position;
+      const arr = pos.array as Float32Array;
+      const shellPos = shellGeomRef.current?.attributes.position.array as Float32Array;
+
+      if (shellPos) {
+        for (let i = 0; i < 12; i++) {
+          const x = shellPos[i * 3];
+          const y = shellPos[i * 3 + 1];
+          const z = shellPos[i * 3 + 2];
+
+          arr[i * 6] = x;
+          arr[i * 6 + 1] = y;
+          arr[i * 6 + 2] = z;
+
+          const spineScale = 1.35 + Math.sin(time * 2.2 + i) * 0.18;
+          arr[i * 6 + 3] = x * spineScale;
+          arr[i * 6 + 4] = y * spineScale;
+          arr[i * 6 + 5] = z * spineScale;
+        }
+        pos.needsUpdate = true;
+      }
+    }
+
+    // Radiolarian Spine Tips Synapses
+    if (spineTipsGeomRef.current && shellGeomRef.current && !reducedMotion) {
+      const geom = spineTipsGeomRef.current;
+      const pos = geom.attributes.position;
+      const arr = pos.array as Float32Array;
+      const shellPos = shellGeomRef.current.attributes.position.array as Float32Array;
+      for (let i = 0; i < 12; i++) {
+        const x = shellPos[i * 3];
+        const y = shellPos[i * 3 + 1];
+        const z = shellPos[i * 3 + 2];
+        const spineScale = 1.35 + Math.sin(time * 2.2 + i) * 0.18;
+        arr[i * 3] = x * spineScale;
+        arr[i * 3 + 1] = y * spineScale;
+        arr[i * 3 + 2] = z * spineScale;
+      }
+      pos.needsUpdate = true;
+    }
+
+    // Gyroid vector field flow drift
+    if (pointsGeomRef.current && !reducedMotion) {
+      const geom = pointsGeomRef.current;
+      const pos = geom.attributes.position;
+      const arr = pos.array as Float32Array;
+      const orig = gyroidParticles.original;
+      
+      for (let i = 0; i < pos.count; i++) {
+        let x = arr[i * 3];
+        let y = arr[i * 3 + 1];
+        let z = arr[i * 3 + 2];
+
+        const sx = x * 2.2;
+        const sy = y * 2.2;
+        const sz = z * 2.2;
+        
+        const gx = Math.cos(sx) * Math.sin(sy) - Math.sin(sx) * Math.cos(sz);
+        const gy = Math.cos(sy) * Math.sin(sz) - Math.sin(sy) * Math.cos(sx);
+        const gz = Math.cos(sz) * Math.sin(sx) - Math.sin(sz) * Math.cos(sy);
+
+        x += gx * delta * 1.5;
+        y += gy * delta * 1.5;
+        z += gz * delta * 1.5;
+
+        const distSq = x * x + y * y + z * z;
+        if (distSq > 3.24) {
+          x = orig[i * 3];
+          y = orig[i * 3 + 1];
+          z = orig[i * 3 + 2];
+        }
+
+        arr[i * 3] = x;
+        arr[i * 3 + 1] = y;
+        arr[i * 3 + 2] = z;
+      }
+      pos.needsUpdate = true;
+    }
+
+    // Rotate internal cages in opposite directions (quasicrystal order)
+    if (dodecaRef.current && !reducedMotion) {
+      dodecaRef.current.rotation.y += delta * 0.22;
+      dodecaRef.current.rotation.x -= delta * 0.08;
+    }
+    if (innerIcosaRef.current && !reducedMotion) {
+      innerIcosaRef.current.rotation.y -= delta * 0.32;
+      innerIcosaRef.current.rotation.z += delta * 0.12;
+    }
 
     if (shell.current) {
-      shell.current.rotation.y += reducedMotion ? 0 : delta * .09;
-      shell.current.rotation.x = Math.sin(time * .2) * .08;
-      const pulse = reducedMotion ? 1 : 1 + Math.sin(time * 1.5) * .04;
+      shell.current.rotation.y += reducedMotion ? 0 : delta * 0.08;
+      shell.current.rotation.x = Math.sin(time * 0.2) * 0.05;
+      
+      const pulse = reducedMotion ? 1 : 1 + Math.sin(time * 1.2) * 0.035;
       shell.current.scale.setScalar(pulse * (hovered ? 1.08 : 1));
 
-      // Displace position toward cursor (bending network)
-      const displacement = new THREE.Vector3().subVectors(mouse3D, nodePos).normalize().multiplyScalar(influence * 0.95);
+      const displacement = new THREE.Vector3().subVectors(mouse3D, nodePos).normalize().multiplyScalar(influence * 0.88);
       shell.current.position.copy(displacement);
     }
-    if (fire.current && !reducedMotion) {
-      fire.current.rotation.y -= delta * .15;
-      fire.current.rotation.z += delta * .04;
-    }
-    if (fireOpposite.current && !reducedMotion) {
-      fireOpposite.current.rotation.y += delta * .12;
-      fireOpposite.current.rotation.x -= delta * .04;
-    }
+
     if (rings.current && !reducedMotion) {
-      rings.current.rotation.z -= delta * .06;
-      rings.current.rotation.y += delta * .03;
+      rings.current.rotation.z -= delta * 0.04;
+      rings.current.rotation.y += delta * 0.02;
     }
   });
 
@@ -542,31 +693,62 @@ function CoreNode({ active, reducedMotion, onSelect }: { active: boolean; reduce
 
   return <group position={node.position}>
     <group ref={shell} onClick={select} onDoubleClick={handleDoubleClick} onPointerEnter={(event) => { event.stopPropagation(); setHovered(true); document.body.style.cursor = "pointer"; }} onPointerLeave={() => { setHovered(false); document.body.style.cursor = ""; }}>
-      <pointLight ref={lightRef} color="#ffb21c" intensity={active ? 34 : 25} distance={35} decay={1.5} />
+      <pointLight ref={lightRef} color="#00f0ff" intensity={active ? 38 : 28} distance={35} decay={1.5} />
       
-      {/* Inner Core Dodecahedron */}
-      <mesh ref={innerMeshRef}><dodecahedronGeometry args={[1.4, 0]} /><meshBasicMaterial color="#ffffff" toneMapped={false} /></mesh>
-      
-      {/* Refractive Middle Glass Gem */}
-      <mesh><icosahedronGeometry args={[2.25, 1]} /><meshPhysicalMaterial ref={matRef} color="#ff9d00" emissive="#ffb000" emissiveIntensity={active ? 3.5 : 2.8} roughness={0.12} metalness={0.15} transmission={0.7} thickness={1.5} flatShading={true} toneMapped={false} /></mesh>
-      
-      {/* Outer Gyroscope */}
-      <group ref={fire}>
-        <mesh><icosahedronGeometry args={[2.43, 3]} /><meshBasicMaterial ref={fireMatRef} color="#ffd84a" wireframe transparent opacity={.45} blending={THREE.AdditiveBlending} toneMapped={false} /></mesh>
-        <points>
-          <bufferGeometry><bufferAttribute attach="attributes-position" args={[corona, 3]} /></bufferGeometry>
-          <pointsMaterial ref={coronaMatRef} color="#ffcf40" size={.11} sizeAttenuation transparent opacity={.88} depthWrite={false} blending={THREE.AdditiveBlending} toneMapped={false} />
-        </points>
-      </group>
-      <group ref={fireOpposite}>
-        <mesh><icosahedronGeometry args={[2.62, 2]} /><meshBasicMaterial ref={fireOppMatRef} color="#ff5b0a" wireframe transparent opacity={.26} blending={THREE.AdditiveBlending} toneMapped={false} /></mesh>
-      </group>
+      {/* 1. Outer Evolving Glass Crystal Shell */}
+      <mesh>
+        <icosahedronGeometry ref={shellGeomRef} args={[2.3, 1]} />
+        <meshPhysicalMaterial 
+          ref={matRef} 
+          color="#020412" 
+          emissive="#7800ff" 
+          emissiveIntensity={active ? 2.5 : 1.8} 
+          roughness={0.12} 
+          metalness={0.1} 
+          transmission={0.92} 
+          thickness={1.8} 
+          ior={1.75}
+          flatShading={true} 
+          transparent={true}
+          opacity={0.88}
+          toneMapped={false} 
+        />
+      </mesh>
+
+      {/* 2. Radiolarian Spines (radial lines extending from wobbly vertices) */}
+      <lineSegments>
+        <primitive ref={spinesGeomRef} object={spinesGeom} attach="geometry" />
+        <lineBasicMaterial ref={spinesMatRef} color="#00ffff" transparent={true} opacity={0.55} depthWrite={false} blending={THREE.AdditiveBlending} />
+      </lineSegments>
+
+      {/* 3. Radiolarian Spine Tip Synapses (Glowing nodes at the tips) */}
+      <points>
+        <primitive ref={spineTipsGeomRef} object={tipsGeom} attach="geometry" />
+        <pointsMaterial ref={spineTipsMatRef} color="#ffffff" size={0.18} sizeAttenuation={true} transparent={true} opacity={0.92} depthWrite={false} blending={THREE.AdditiveBlending} />
+      </points>
+
+      {/* 4. Nested Rotating Quasicrystal Cages */}
+      <mesh ref={dodecaRef}>
+        <dodecahedronGeometry args={[1.7, 0]} />
+        <meshBasicMaterial ref={dodecaMatRef} color="#00f0ff" wireframe transparent opacity={0.3} blending={THREE.AdditiveBlending} />
+      </mesh>
+      <mesh ref={innerIcosaRef}>
+        <icosahedronGeometry args={[1.0, 0]} />
+        <meshBasicMaterial ref={innerIcosaMatRef} color="#a855f7" wireframe transparent opacity={0.42} blending={THREE.AdditiveBlending} />
+      </mesh>
+
+      {/* 5. Gyroid Synaptic Swarm (Drifting internal energy paths) */}
+      <points>
+        <bufferGeometry ref={pointsGeomRef} attach="geometry">
+          <bufferAttribute attach="attributes-position" args={[gyroidParticles.positions, 3]} />
+        </bufferGeometry>
+        <pointsMaterial ref={pointsMatRef} color="#00ffff" size={0.065} sizeAttenuation={true} transparent={true} opacity={0.82} depthWrite={false} blending={THREE.AdditiveBlending} />
+      </points>
     </group>
     
     <group ref={rings}>
-      <mesh rotation={[Math.PI / 2, 0, 0]}><torusGeometry args={[3.05, .018, 6, 120]} /><meshBasicMaterial ref={ring1MatRef} color="#ffd84a" transparent opacity={.46} blending={THREE.AdditiveBlending} /></mesh>
-      <mesh rotation={[1.15, .3, .5]}><torusGeometry args={[3.72, .012, 6, 120]} /><meshBasicMaterial ref={ring2MatRef} color="#ff6b12" transparent opacity={.25} blending={THREE.AdditiveBlending} /></mesh>
-      <mesh rotation={[0.4, 1.2, 0.2]}><torusGeometry args={[4.2, .008, 4, 96]} /><meshBasicMaterial ref={ring3MatRef} color="#ffc52f" transparent opacity={.18} blending={THREE.AdditiveBlending} /></mesh>
+      <mesh rotation={[Math.PI / 2, 0, 0]}><torusGeometry args={[3.05, .012, 6, 120]} /><meshBasicMaterial color="#00f0ff" transparent opacity={0.3} blending={THREE.AdditiveBlending} /></mesh>
+      <mesh rotation={[1.15, .3, .5]}><torusGeometry args={[3.72, .008, 6, 120]} /><meshBasicMaterial color="#7800ff" transparent opacity={0.18} blending={THREE.AdditiveBlending} /></mesh>
     </group>
     <SpriteLabel text={node.shortTitle} color={node.color} y={-3.45} prominent />
   </group>;
@@ -1095,7 +1277,7 @@ function CameraRig({ selected, focusVersion, reducedMotion }: { selected: NodeId
   return null;
 }
 
-function UniverseScene({ selected, focusVersion, reducedMotion, onSelect }: { selected: NodeId; focusVersion: number; reducedMotion: boolean; onSelect: (id: NodeId) => void }) {
+function UniverseScene({ selected, focusVersion, hasWebGL2, reducedMotion, onSelect }: { selected: NodeId; focusVersion: number; hasWebGL2: boolean; reducedMotion: boolean; onSelect: (id: NodeId) => void }) {
   return <>
     <color attach="background" args={["#010207"]} />
     <fog attach="fog" args={["#010207", 18, 72]} />
@@ -1107,7 +1289,11 @@ function UniverseScene({ selected, focusVersion, reducedMotion, onSelect }: { se
     {NODES.filter((node) => node.id !== "core").map((node) => <IntelligenceNode key={node.id} node={node} active={selected === node.id} reducedMotion={reducedMotion} onSelect={onSelect} />)}
     {selected !== "core" ? <LocalNodeWorld key={selected} node={NODE_MAP.get(selected)!} reducedMotion={reducedMotion} /> : null}
     <CameraRig selected={selected} focusVersion={focusVersion} reducedMotion={reducedMotion} />
-    <EffectComposer multisampling={0}><Bloom intensity={1.02} luminanceThreshold={.24} luminanceSmoothing={.72} mipmapBlur /></EffectComposer>
+    {hasWebGL2 ? (
+      <EffectComposer multisampling={0}>
+        <Bloom intensity={1.02} luminanceThreshold={.24} luminanceSmoothing={.72} mipmapBlur />
+      </EffectComposer>
+    ) : null}
   </>;
 }
 
@@ -1263,6 +1449,20 @@ const DETAIL_MAP: Record<NodeId, NodeDetails> = {
 };
 
 export function IntelligenceUniverse() {
+  const [mounted, setMounted] = useState(false);
+  const [hasWebGL2, setHasWebGL2] = useState(true);
+
+  useEffect(() => {
+    setMounted(true);
+    try {
+      const canvas = document.createElement("canvas");
+      const gl = canvas.getContext("webgl2");
+      setHasWebGL2(!!gl);
+    } catch (e) {
+      setHasWebGL2(false);
+    }
+  }, []);
+
   const [selected, setSelected] = useState<NodeId>("core");
   const [focusVersion, setFocusVersion] = useState(0);
   const [reducedMotion, setReducedMotion] = useState(false);
@@ -1350,10 +1550,14 @@ export function IntelligenceUniverse() {
     });
   }, []);
 
+  if (!mounted) {
+    return <section style={{ background: "#010207", width: "100vw", height: "100vh" }} aria-label="Loading UIOS intelligence universe" />;
+  }
+
   return <section className={`intelligence-universe${ready ? " universe-ready" : ""}`} aria-label="Interactive UIOS intelligence universe">
     <CanvasErrorBoundary key={introVersion}>
-      <Canvas dpr={[1, 1.5]} camera={{ position: [0, 8, 40], fov: 48, near: .1, far: 120 }} gl={{ antialias: true, powerPreference: "high-performance" }}>
-        <Suspense fallback={null}><UniverseScene selected={selected} focusVersion={focusVersion} reducedMotion={reducedMotion} onSelect={selectSpatialNode} /></Suspense>
+      <Canvas dpr={[1, 1.5]} camera={{ position: [0, 8, 40], fov: 48, near: .1, far: 120 }} gl={{ antialias: true, powerPreference: "high-performance" }} style={{ width: "100%", height: "100%", position: "absolute", top: 0, left: 0 }}>
+        <Suspense fallback={null}><UniverseScene selected={selected} focusVersion={focusVersion} hasWebGL2={hasWebGL2} reducedMotion={reducedMotion} onSelect={selectSpatialNode} /></Suspense>
       </Canvas>
     </CanvasErrorBoundary>
 
