@@ -451,6 +451,52 @@ function GalaxyField({ node, active, reducedMotion }: { node: UniverseNode; acti
   </group>;
 }
 
+function AegisDome({ active, reducedMotion }: { active: boolean; reducedMotion: boolean }) {
+  const domeRef = useRef<THREE.Mesh>(null);
+  const matRef = useRef<THREE.MeshBasicMaterial>(null);
+  
+  useFrame((state) => {
+    const time = state.clock.elapsedTime;
+    
+    // Dome activation: only turn on after initial power up (7.8 seconds)
+    let opacity = 0;
+    if (time >= 7.8) {
+      if (time < 9.2) {
+        const spark = Math.sin((time - 7.8) * 45) * Math.cos((time - 7.8) * 30);
+        opacity = spark > 0.15 ? 0.38 : 0.04;
+      } else {
+        const base = active ? 0.28 : 0.14;
+        const pulse = Math.sin(time * 1.8) * 0.03;
+        opacity = base + pulse;
+      }
+    }
+    
+    if (matRef.current) {
+      matRef.current.opacity = opacity;
+    }
+    
+    if (domeRef.current && !reducedMotion) {
+      domeRef.current.rotation.y = time * 0.035;
+    }
+  });
+
+  return (
+    <mesh ref={domeRef} position={[0, 0, 0]}>
+      <sphereGeometry args={[23.0, 48, 24, 0, Math.PI * 2, 0, Math.PI / 1.7]} />
+      <meshBasicMaterial 
+        ref={matRef}
+        color="#25c8ff" 
+        wireframe={true} 
+        transparent={true} 
+        opacity={0} 
+        side={THREE.DoubleSide} 
+        blending={THREE.AdditiveBlending}
+        depthWrite={false}
+      />
+    </mesh>
+  );
+}
+
 function CoreNode({ active, reducedMotion, onSelect, onHover }: { active: boolean; reducedMotion: boolean; onSelect: (id: NodeId) => void; onHover: (id: NodeId | null) => void }) {
   const shell = useRef<THREE.Group>(null);
   const fire = useRef<THREE.Group>(null);
@@ -1021,7 +1067,7 @@ function CameraRig({ selected, focusVersion, reducedMotion }: { selected: NodeId
     const direction = target.clone();
     if (direction.lengthSq() < .01) direction.set(.35, .2, 1);
     direction.normalize();
-    const distance = node.kind === "core" ? 15.5 : node.kind === "zone" ? 7.5 : 5.4;
+    const distance = node.kind === "core" ? 28.0 : node.kind === "zone" ? 8.5 : 5.8;
     const destination = target.clone().add(direction.multiplyScalar(distance)).add(new THREE.Vector3(0, node.kind === "provider" ? .65 : 1.35, node.kind === "core" ? 0 : 1.5));
     
     // Compute Bezier Midpoint
@@ -1103,6 +1149,7 @@ function UniverseScene({ selected, focusVersion, hasWebGL2, reducedMotion, onSel
     <directionalLight color="#7896ff" intensity={.42} position={[4, 8, 8]} />
     <StarField reducedMotion={reducedMotion} />
     <LivingNetwork reducedMotion={reducedMotion} />
+    <AegisDome active={selected === "aegis"} reducedMotion={reducedMotion} />
     <CoreNode active={selected === "core"} reducedMotion={reducedMotion} onSelect={onSelect} onHover={onHover} />
     {NODES.filter((node) => node.id !== "core").map((node) => <IntelligenceNode key={node.id} node={node} active={selected === node.id} reducedMotion={reducedMotion} onSelect={onSelect} onHover={onHover} />)}
     {selected !== "core" ? <LocalNodeWorld key={selected} node={NODE_MAP.get(selected)!} reducedMotion={reducedMotion} /> : null}
@@ -1211,7 +1258,7 @@ const DETAIL_MAP: Record<NodeId, NodeDetails> = {
     features: [
       "Fail-closed edge policy validation",
       "OIDC / SAML authentication enforcement",
-      "Model output boundary filtering"
+      "Global shield dome forcefield grid"
     ],
     ctaText: "OPEN SECURITY CENTER",
     ctaUrl: "/security"
@@ -1377,13 +1424,13 @@ export function IntelligenceUniverse() {
 
   return <section className={`intelligence-universe${ready ? " universe-ready" : ""}`} aria-label="Interactive UIOS intelligence universe">
     <CanvasErrorBoundary key={introVersion}>
-      <Canvas dpr={[1, 1.5]} camera={{ position: [0, 8, 40], fov: 48, near: .1, far: 120 }} gl={{ antialias: true, powerPreference: "high-performance" }} style={{ width: "100%", height: "100%", position: "absolute", top: 0, left: 0 }}>
+      <Canvas dpr={[1, 1.5]} camera={{ position: [0, 16, 68], fov: 48, near: .1, far: 120 }} gl={{ antialias: true, powerPreference: "high-performance" }} style={{ width: "100%", height: "100%", position: "absolute", top: 0, left: 0 }}>
         <Suspense fallback={null}><UniverseScene selected={clickedNode || "core"} focusVersion={focusVersion} hasWebGL2={hasWebGL2} reducedMotion={reducedMotion} onSelect={selectSpatialNode} onHover={setHoveredNode} /></Suspense>
       </Canvas>
     </CanvasErrorBoundary>
 
     <header className="universe-header" onPointerDown={(event) => event.stopPropagation()}>
-      <button type="button" className="universe-brand" onClick={() => { setClickedNode("core"); setHoveredNode(null); }} aria-label="Return to the UIOS Intelligence Core"><span>UI</span><i />S<small>MYCELIAL UNIVERSE</small></button>
+      <button type="button" className="universe-brand" onClick={() => { setClickedNode("core"); setHoveredNode(null); }} aria-label="Return to the UIOS Intelligence Core"><span>UI</span><i />S<small>INTELLIGENCE UNIVERSE</small></button>
       <div className="universe-coordinates"><i /> LIVE FABRIC <span>WORLD 003</span></div>
       <div className="universe-header-actions" style={{ justifySelf: "end", display: "flex", gap: "10px", pointerEvents: "auto" }}>
         <button type="button" className={`universe-sound-toggle ${muted ? "" : "active"}`} onClick={toggleMute} aria-label={muted ? "Enable universe audio" : "Disable universe audio"}>{muted ? "🔇 AUDIO MUTED" : "🔊 AUDIO ACTIVE"}</button>
