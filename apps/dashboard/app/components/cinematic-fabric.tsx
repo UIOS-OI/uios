@@ -1179,8 +1179,19 @@ export function IntelligenceUniverse() {
   const [ready, setReady] = useState(false);
   const [muted, setMuted] = useState(true);
   const [scrollY, setScrollY] = useState(0);
+  const [introVersion, setIntroVersion] = useState(0);
   const hudLockUntil = useRef(0);
   const node = NODE_MAP.get(selected)!;
+
+  // Listen to replay events from the landing overlay
+  useEffect(() => {
+    const handleReplay = () => {
+      setIntroVersion((v) => v + 1);
+      setReady(false);
+    };
+    window.addEventListener("uios:replay-vision", handleReplay);
+    return () => window.removeEventListener("uios:replay-vision", handleReplay);
+  }, []);
 
   useEffect(() => {
     const motion = window.matchMedia("(prefers-reduced-motion: reduce)");
@@ -1201,7 +1212,7 @@ export function IntelligenceUniverse() {
       document.body.style.cursor = ""; 
       uiosAudio.close();
     };
-  }, []);
+  }, [introVersion]);
 
   // Synchronized chimes with flickering sparks
   useEffect(() => {
@@ -1216,7 +1227,7 @@ export function IntelligenceUniverse() {
       window.setTimeout(() => uiosAudio.triggerChime(9), 7200),
     ];
     return () => timers.forEach(window.clearTimeout);
-  }, [muted]);
+  }, [muted, introVersion]);
 
   const selectNode = useCallback((id: NodeId) => {
     document.body.style.cursor = "";
@@ -1277,7 +1288,7 @@ export function IntelligenceUniverse() {
   }, []);
 
   return <section className={`intelligence-universe${ready ? " universe-ready" : ""}`} aria-label="Interactive UIOS intelligence universe">
-    <CanvasErrorBoundary>
+    <CanvasErrorBoundary key={introVersion}>
       <Canvas dpr={[1, 1.5]} camera={{ position: [0, 8, 40], fov: 48, near: .1, far: 120 }} gl={{ antialias: true, powerPreference: "high-performance" }}>
         <Suspense fallback={null}><UniverseScene selected={selected} focusVersion={focusVersion} scrollY={scrollY} reducedMotion={reducedMotion} onSelect={selectSpatialNode} /></Suspense>
       </Canvas>
@@ -1306,7 +1317,7 @@ export function IntelligenceUniverse() {
 
     <div className="universe-controls" aria-label="Camera controls"><span>DRAG</span> ORBIT <i /> <span>SCROLL</span> ZOOM <i /> <span>CLICK</span> DISCOVER</div>
     <div className="universe-reticle" aria-hidden="true"><i /><i /></div>
-    <div className="universe-intro" aria-hidden="true">
+    <div className="universe-intro" aria-hidden="true" key={introVersion}>
       <div className="intro-depth-sparks">
         {INTRO_SPARKS.map(([x, y, delay], index) => <i key={`${x}-${y}`} style={{ "--spark-x": `${x}%`, "--spark-y": `${y}%`, "--spark-delay": `${delay}s`, "--spark-color": index % 3 === 0 ? "#b55cff" : "#42d7ff" } as CSSProperties} />)}
       </div>
