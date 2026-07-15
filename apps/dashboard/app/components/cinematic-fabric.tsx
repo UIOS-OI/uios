@@ -455,7 +455,9 @@ function CoreNode({ active, reducedMotion, onSelect }: { active: boolean; reduce
   const shell = useRef<THREE.Group>(null);
   const rings = useRef<THREE.Group>(null);
   const lightRef = useRef<THREE.PointLight>(null);
-  const matRef = useRef<THREE.MeshPhysicalMaterial>(null);
+  
+  const matRef = useRef<THREE.MeshBasicMaterial>(null);
+  const edgeMatRef = useRef<THREE.MeshBasicMaterial>(null);
   const dodecaRef = useRef<THREE.Mesh>(null);
   const innerIcosaRef = useRef<THREE.Mesh>(null);
   
@@ -466,18 +468,21 @@ function CoreNode({ active, reducedMotion, onSelect }: { active: boolean; reduce
   const pointsMatRef = useRef<THREE.PointsMaterial>(null);
   
   const shellGeomRef = useRef<THREE.BufferGeometry>(null);
+  const edgeGeomRef = useRef<THREE.BufferGeometry>(null);
   const spinesGeomRef = useRef<THREE.BufferGeometry>(null);
   const spineTipsGeomRef = useRef<THREE.BufferGeometry>(null);
   const pointsGeomRef = useRef<THREE.BufferGeometry>(null);
 
   const originalShellPositions = useRef<Float32Array | null>(null);
+  const originalEdgePositions = useRef<Float32Array | null>(null);
+  
   const [hovered, setHovered] = useState(false);
   const node = NODE_MAP.get("core")!;
 
   const { spinesGeom, originalSpines } = useMemo(() => {
     const geom = new THREE.BufferGeometry();
     const positions = new Float32Array(12 * 2 * 3);
-    const outer = new THREE.IcosahedronGeometry(2.3, 0);
+    const outer = new THREE.IcosahedronGeometry(3.3, 0);
     const outerPos = outer.attributes.position;
     for (let i = 0; i < 12; i++) {
       const x = outerPos.getX(i);
@@ -486,9 +491,9 @@ function CoreNode({ active, reducedMotion, onSelect }: { active: boolean; reduce
       positions[i * 6] = x;
       positions[i * 6 + 1] = y;
       positions[i * 6 + 2] = z;
-      positions[i * 6 + 3] = x * 1.5;
-      positions[i * 6 + 4] = y * 1.5;
-      positions[i * 6 + 5] = z * 1.5;
+      positions[i * 6 + 3] = x * 1.4;
+      positions[i * 6 + 4] = y * 1.4;
+      positions[i * 6 + 5] = z * 1.4;
     }
     geom.setAttribute("position", new THREE.BufferAttribute(positions, 3));
     return { spinesGeom: geom, originalSpines: positions.slice() };
@@ -502,13 +507,13 @@ function CoreNode({ active, reducedMotion, onSelect }: { active: boolean; reduce
   }, []);
 
   const gyroidParticles = useMemo(() => {
-    const count = 180;
+    const count = 220;
     const positions = new Float32Array(count * 3);
     const original = new Float32Array(count * 3);
     for (let i = 0; i < count; i++) {
       const theta = Math.random() * Math.PI * 2;
       const phi = Math.acos(2.0 * Math.random() - 1.0);
-      const r = Math.pow(Math.random(), 1 / 3) * 1.6;
+      const r = Math.pow(Math.random(), 1 / 3) * 2.5;
       const x = r * Math.sin(phi) * Math.cos(theta);
       const y = r * Math.sin(phi) * Math.sin(theta);
       const z = r * Math.cos(phi);
@@ -525,6 +530,9 @@ function CoreNode({ active, reducedMotion, onSelect }: { active: boolean; reduce
   const initGeometries = useCallback(() => {
     if (shellGeomRef.current && !originalShellPositions.current) {
       originalShellPositions.current = shellGeomRef.current.attributes.position.array.slice() as Float32Array;
+    }
+    if (edgeGeomRef.current && !originalEdgePositions.current) {
+      originalEdgePositions.current = edgeGeomRef.current.attributes.position.array.slice() as Float32Array;
     }
   }, []);
 
@@ -548,8 +556,9 @@ function CoreNode({ active, reducedMotion, onSelect }: { active: boolean; reduce
     const influence = dist < 7.0 ? Math.max(0, 1 - dist / 7.0) : 0;
 
     if (lightRef.current) lightRef.current.intensity = (active ? 38 : 28) * flicker + influence * 15;
-    if (matRef.current) matRef.current.emissiveIntensity = (active ? 2.5 : 1.8) * flicker + influence * 2.0;
     
+    if (matRef.current) matRef.current.opacity = 0.3 * flicker;
+    if (edgeMatRef.current) edgeMatRef.current.opacity = 0.5 * flicker;
     if (dodecaMatRef.current) dodecaMatRef.current.opacity = 0.3 * flicker;
     if (innerIcosaMatRef.current) innerIcosaMatRef.current.opacity = 0.42 * flicker;
     if (spinesMatRef.current) spinesMatRef.current.opacity = 0.55 * flicker;
@@ -574,6 +583,26 @@ function CoreNode({ active, reducedMotion, onSelect }: { active: boolean; reduce
       }
       pos.needsUpdate = true;
       geom.computeVertexNormals();
+    }
+
+    // Organic Edge Deformation (Sync wireframe outline)
+    if (edgeGeomRef.current && originalEdgePositions.current && !reducedMotion) {
+      const geom = edgeGeomRef.current;
+      const pos = geom.attributes.position;
+      const orig = originalEdgePositions.current;
+      for (let i = 0; i < pos.count; i++) {
+        const ox = orig[i * 3];
+        const oy = orig[i * 3 + 1];
+        const oz = orig[i * 3 + 2];
+
+        const wave = Math.sin(time * 1.6 + ox * 1.5 + oy * 1.1) * 0.15 + Math.cos(time * 0.9 + oz * 1.4) * 0.06;
+        const waveY = Math.cos(time * 1.3 + oy * 1.8 + oz * 0.9) * 0.15 + Math.sin(time * 0.8 + ox * 1.2) * 0.06;
+        const waveZ = Math.sin(time * 1.9 + oz * 1.3 + ox * 1.9) * 0.15 + Math.cos(time * 1.1 + oy * 1.5) * 0.06;
+
+        const scale = 1.002;
+        pos.setXYZ(i, (ox + wave) * scale, (oy + waveY) * scale, (oz + waveZ) * scale);
+      }
+      pos.needsUpdate = true;
     }
 
     // Radiolarian Spines (bases track morphed shell, tips breathe)
@@ -645,7 +674,7 @@ function CoreNode({ active, reducedMotion, onSelect }: { active: boolean; reduce
         z += gz * delta * 1.5;
 
         const distSq = x * x + y * y + z * z;
-        if (distSq > 3.24) {
+        if (distSq > 7.29) {
           x = orig[i * 3];
           y = orig[i * 3 + 1];
           z = orig[i * 3 + 2];
@@ -695,49 +724,54 @@ function CoreNode({ active, reducedMotion, onSelect }: { active: boolean; reduce
     <group ref={shell} onClick={select} onDoubleClick={handleDoubleClick} onPointerEnter={(event) => { event.stopPropagation(); setHovered(true); document.body.style.cursor = "pointer"; }} onPointerLeave={() => { setHovered(false); document.body.style.cursor = ""; }}>
       <pointLight ref={lightRef} color="#00f0ff" intensity={active ? 38 : 28} distance={35} decay={1.5} />
       
-      {/* 1. Outer Evolving Glass Crystal Shell */}
+      {/* 1. Outer Evolving Glass Crystal Facets (Standard Transparent Shader) */}
       <mesh>
-        <icosahedronGeometry ref={shellGeomRef} args={[2.3, 0]} />
-        <meshPhysicalMaterial 
+        <icosahedronGeometry ref={shellGeomRef} args={[3.3, 0]} />
+        <meshBasicMaterial 
           ref={matRef} 
-          color="#01020a" 
-          emissive="#24054a" 
-          emissiveIntensity={active ? 0.6 : 0.4} 
-          roughness={0.08} 
-          metalness={0.05} 
-          transmission={0.96} 
-          thickness={1.5} 
-          ior={1.65}
-          flatShading={true} 
+          color="#030514" 
           transparent={true}
-          opacity={0.9}
-          toneMapped={false} 
+          opacity={0.3}
+          depthWrite={true}
         />
       </mesh>
 
-      {/* 2. Radiolarian Spines (radial lines extending from wobbly vertices) */}
+      {/* 2. Outer Crystalline Wireframe Edges (Cyan Facet Outline) */}
+      <mesh>
+        <icosahedronGeometry ref={edgeGeomRef} args={[3.307, 0]} />
+        <meshBasicMaterial 
+          ref={edgeMatRef}
+          color="#00ffff" 
+          wireframe={true}
+          transparent={true}
+          opacity={0.5}
+          blending={THREE.AdditiveBlending}
+        />
+      </mesh>
+
+      {/* 3. Radiolarian Spines (radial lines extending from wobbly vertices) */}
       <lineSegments>
         <primitive ref={spinesGeomRef} object={spinesGeom} attach="geometry" />
         <lineBasicMaterial ref={spinesMatRef} color="#00ffff" transparent={true} opacity={0.55} depthWrite={false} blending={THREE.AdditiveBlending} />
       </lineSegments>
 
-      {/* 3. Radiolarian Spine Tip Synapses (Glowing nodes at the tips) */}
+      {/* 4. Radiolarian Spine Tip Synapses (Glowing nodes at the tips) */}
       <points>
         <primitive ref={spineTipsGeomRef} object={tipsGeom} attach="geometry" />
         <pointsMaterial ref={spineTipsMatRef} color="#ffffff" size={0.18} sizeAttenuation={true} transparent={true} opacity={0.92} depthWrite={false} blending={THREE.AdditiveBlending} />
       </points>
 
-      {/* 4. Nested Rotating Quasicrystal Cages */}
+      {/* 5. Nested Rotating Quasicrystal Cages */}
       <mesh ref={dodecaRef}>
-        <dodecahedronGeometry args={[1.7, 0]} />
+        <dodecahedronGeometry args={[2.4, 0]} />
         <meshBasicMaterial ref={dodecaMatRef} color="#00f0ff" wireframe transparent opacity={0.3} blending={THREE.AdditiveBlending} />
       </mesh>
       <mesh ref={innerIcosaRef}>
-        <icosahedronGeometry args={[1.0, 0]} />
+        <icosahedronGeometry args={[1.4, 0]} />
         <meshBasicMaterial ref={innerIcosaMatRef} color="#a855f7" wireframe transparent opacity={0.42} blending={THREE.AdditiveBlending} />
       </mesh>
 
-      {/* 5. Gyroid Synaptic Swarm (Drifting internal energy paths) */}
+      {/* 6. Gyroid Synaptic Swarm (Drifting internal energy paths) */}
       <points>
         <bufferGeometry ref={pointsGeomRef} attach="geometry">
           <bufferAttribute attach="attributes-position" args={[gyroidParticles.positions, 3]} />
@@ -747,10 +781,10 @@ function CoreNode({ active, reducedMotion, onSelect }: { active: boolean; reduce
     </group>
     
     <group ref={rings}>
-      <mesh rotation={[Math.PI / 2, 0, 0]}><torusGeometry args={[3.05, .012, 6, 120]} /><meshBasicMaterial color="#00f0ff" transparent opacity={0.3} blending={THREE.AdditiveBlending} /></mesh>
-      <mesh rotation={[1.15, .3, .5]}><torusGeometry args={[3.72, .008, 6, 120]} /><meshBasicMaterial color="#7800ff" transparent opacity={0.18} blending={THREE.AdditiveBlending} /></mesh>
+      <mesh rotation={[Math.PI / 2, 0, 0]}><torusGeometry args={[4.5, .012, 6, 120]} /><meshBasicMaterial color="#00f0ff" transparent opacity={0.3} blending={THREE.AdditiveBlending} /></mesh>
+      <mesh rotation={[1.15, .3, .5]}><torusGeometry args={[5.5, .008, 6, 120]} /><meshBasicMaterial color="#7800ff" transparent opacity={0.18} blending={THREE.AdditiveBlending} /></mesh>
     </group>
-    <SpriteLabel text={node.shortTitle} color={node.color} y={-3.45} prominent />
+    <SpriteLabel text={node.shortTitle} color={node.color} y={-4.4} prominent />
   </group>;
 }
 
