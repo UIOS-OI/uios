@@ -451,23 +451,31 @@ function GalaxyField({ node, active, reducedMotion }: { node: UniverseNode; acti
   </group>;
 }
 
-function AegisDome({ active, reducedMotion }: { active: boolean; reducedMotion: boolean }) {
+function AegisDome({ active, reducedMotion, domeState }: { active: boolean; reducedMotion: boolean; domeState: "auto" | "force-on" | "force-off" }) {
   const domeRef = useRef<THREE.Mesh>(null);
   const matRef = useRef<THREE.MeshBasicMaterial>(null);
   
   useFrame((state) => {
     const time = state.clock.elapsedTime;
     
-    // Dome activation: only turn on after initial power up (7.8 seconds)
     let opacity = 0;
-    if (time >= 7.8) {
-      if (time < 9.2) {
-        const spark = Math.sin((time - 7.8) * 45) * Math.cos((time - 7.8) * 30);
-        opacity = spark > 0.15 ? 0.38 : 0.04;
-      } else {
-        const base = active ? 0.28 : 0.14;
-        const pulse = Math.sin(time * 1.8) * 0.03;
-        opacity = base + pulse;
+    if (domeState === "force-off") {
+      opacity = 0;
+    } else if (domeState === "force-on") {
+      const base = active ? 0.38 : 0.28;
+      const pulse = Math.sin(time * 2.5) * 0.04;
+      opacity = base + pulse;
+    } else {
+      // Dome activation: only turn on after initial power up (7.8 seconds)
+      if (time >= 7.8) {
+        if (time < 9.2) {
+          const spark = Math.sin((time - 7.8) * 45) * Math.cos((time - 7.8) * 30);
+          opacity = spark > 0.15 ? 0.38 : 0.04;
+        } else {
+          const base = active ? 0.28 : 0.14;
+          const pulse = Math.sin(time * 1.8) * 0.03;
+          opacity = base + pulse;
+        }
       }
     }
     
@@ -497,27 +505,85 @@ function AegisDome({ active, reducedMotion }: { active: boolean; reducedMotion: 
   );
 }
 
-function CoreNode({ active, reducedMotion, onSelect, onHover }: { active: boolean; reducedMotion: boolean; onSelect: (id: NodeId) => void; onHover: (id: NodeId | null) => void }) {
+function SegmentedRing({ radius, segments, speed, rotation, color, opacity, orbitSpeed }: { radius: number, segments: number, speed: number, rotation: [number, number, number], color: string, opacity: number, orbitSpeed: number }) {
+  const groupRef = useRef<THREE.Group>(null);
+  useFrame((state) => {
+    if (groupRef.current) {
+      groupRef.current.rotation.z = state.clock.elapsedTime * speed * orbitSpeed;
+    }
+  });
+
+  const insts = useMemo(() => {
+    const items = [];
+    const angleStep = (Math.PI * 2) / segments;
+    for (let i = 0; i < segments; i++) {
+      if (i % 3 === 0) continue;
+      const angle = i * angleStep;
+      const x = Math.cos(angle) * radius;
+      const y = Math.sin(angle) * radius;
+      const rotZ = angle + Math.PI / 2;
+      items.push({ x, y, rotZ });
+    }
+    return items;
+  }, [radius, segments]);
+
+  return (
+    <group rotation={rotation}>
+      <group ref={groupRef}>
+        {insts.map((item, idx) => (
+          <mesh key={idx} position={[item.x, item.y, 0]} rotation={[0, 0, item.rotZ]}>
+            <boxGeometry args={[radius * 0.14, 0.02, 0.02]} />
+            <meshBasicMaterial color={color} transparent opacity={opacity} blending={THREE.AdditiveBlending} toneMapped={false} />
+          </mesh>
+        ))}
+      </group>
+    </group>
+  );
+}
+
+function CoreNode({ active, reducedMotion, onSelect, onHover, sunTemperature, orbitSpeed }: { active: boolean; reducedMotion: boolean; onSelect: (id: NodeId) => void; onHover: (id: NodeId | null) => void; sunTemperature: number; orbitSpeed: number }) {
   const shell = useRef<THREE.Group>(null);
   const fire = useRef<THREE.Group>(null);
   const fireOpposite = useRef<THREE.Group>(null);
-  const rings = useRef<THREE.Group>(null);
   const lightRef = useRef<THREE.PointLight>(null);
-  const matRef = useRef<THREE.MeshPhysicalMaterial>(null);
   const innerMeshRef = useRef<THREE.Mesh>(null);
+  const innerWireRef = useRef<THREE.MeshBasicMaterial>(null);
+  const coreMatRef = useRef<THREE.MeshBasicMaterial>(null);
   const fireMatRef = useRef<THREE.MeshBasicMaterial>(null);
   const fireOppMatRef = useRef<THREE.MeshBasicMaterial>(null);
   const coronaMatRef = useRef<THREE.PointsMaterial>(null);
-  const ring1MatRef = useRef<THREE.MeshBasicMaterial>(null);
-  const ring2MatRef = useRef<THREE.MeshBasicMaterial>(null);
-  const ring3MatRef = useRef<THREE.MeshBasicMaterial>(null);
 
   const [hovered, setHovered] = useState(false);
   const node = NODE_MAP.get("core")!;
 
+  const colors = useMemo(() => {
+    const temp = sunTemperature;
+    const coreColor = new THREE.Color();
+    const cageColor1 = new THREE.Color();
+    const cageColor2 = new THREE.Color();
+
+    if (temp <= 1.0) {
+      const t = (temp - 0.2) / 0.8;
+      coreColor.lerpColors(new THREE.Color("#ff2200"), new THREE.Color("#00f3ff"), t);
+      cageColor1.lerpColors(new THREE.Color("#ff7700"), new THREE.Color("#0088ff"), t);
+      cageColor2.lerpColors(new THREE.Color("#ffd000"), new THREE.Color("#00f3ff"), t);
+    } else {
+      const t = (temp - 1.0) / 1.0;
+      coreColor.lerpColors(new THREE.Color("#00f3ff"), new THREE.Color("#bd2cff"), t);
+      cageColor1.lerpColors(new THREE.Color("#0088ff"), new THREE.Color("#7f00ff"), t);
+      cageColor2.lerpColors(new THREE.Color("#00f3ff"), new THREE.Color("#df7cff"), t);
+    }
+
+    return {
+      core: `#${coreColor.getHexString()}`,
+      cage1: `#${cageColor1.getHexString()}`,
+      cage2: `#${cageColor2.getHexString()}`,
+    };
+  }, [sunTemperature]);
+
   const corona = useMemo(() => {
     const random = seededRandom(0x94f11);
-    const radius = 3.65; // Scaled up (ginormous!)
+    const radius = 3.65;
     const points = new Float32Array(340 * 3);
     for (let index = 0; index < 340; index += 1) {
       const theta = random() * Math.PI * 2;
@@ -536,7 +602,6 @@ function CoreNode({ active, reducedMotion, onSelect, onHover }: { active: boolea
     const time = state.clock.elapsedTime;
     const flicker = getIntroFlicker(time);
 
-    // Calculate mouse intersection in 3D (camera perpendicular plane)
     state.camera.getWorldDirection(normal);
     normal.negate();
     const plane = new THREE.Plane(normal, 0);
@@ -546,37 +611,46 @@ function CoreNode({ active, reducedMotion, onSelect, onHover }: { active: boolea
     const dist = nodePos.distanceTo(mouse3D);
     const influence = dist < 7.0 ? Math.max(0, 1 - dist / 7.0) : 0;
 
-    if (lightRef.current) lightRef.current.intensity = (active ? 34 : 25) * flicker + influence * 15;
-    if (matRef.current) matRef.current.emissiveIntensity = (active ? 3.5 : 2.8) * flicker + influence * 2.2;
+    if (lightRef.current) {
+      lightRef.current.intensity = (active ? 34 : 25) * flicker + influence * 15;
+      lightRef.current.color.set(colors.core);
+    }
+    if (coreMatRef.current) {
+      coreMatRef.current.color.set(colors.core);
+    }
+    if (innerWireRef.current) {
+      innerWireRef.current.color.set(colors.core);
+    }
     if (innerMeshRef.current) innerMeshRef.current.scale.setScalar(flicker + influence * 0.15);
-    if (fireMatRef.current) fireMatRef.current.opacity = 0.45 * flicker;
-    if (fireOppMatRef.current) fireOppMatRef.current.opacity = 0.26 * flicker;
-    if (coronaMatRef.current) coronaMatRef.current.opacity = 0.88 * flicker;
-    if (ring1MatRef.current) ring1MatRef.current.opacity = 0.46 * flicker;
-    if (ring2MatRef.current) ring2MatRef.current.opacity = 0.25 * flicker;
-    if (ring3MatRef.current) ring3MatRef.current.opacity = 0.18 * flicker;
+    if (fireMatRef.current) {
+      fireMatRef.current.opacity = 0.7 * flicker;
+      fireMatRef.current.color.set(colors.cage1);
+    }
+    if (fireOppMatRef.current) {
+      fireOppMatRef.current.opacity = 0.5 * flicker;
+      fireOppMatRef.current.color.set(colors.cage2);
+    }
+    if (coronaMatRef.current) {
+      coronaMatRef.current.opacity = 0.88 * flicker;
+      coronaMatRef.current.color.set(colors.cage2);
+    }
 
     if (shell.current) {
-      shell.current.rotation.y += reducedMotion ? 0 : delta * .09;
+      shell.current.rotation.y += reducedMotion ? 0 : delta * .09 * orbitSpeed;
       shell.current.rotation.x = Math.sin(time * .2) * .08;
       const pulse = reducedMotion ? 1 : 1 + Math.sin(time * 1.5) * .04;
       shell.current.scale.setScalar(pulse * (hovered ? 1.08 : 1));
 
-      // Displace position toward cursor (bending network)
       const displacement = new THREE.Vector3().subVectors(mouse3D, nodePos).normalize().multiplyScalar(influence * 0.95);
       shell.current.position.copy(displacement);
     }
     if (fire.current && !reducedMotion) {
-      fire.current.rotation.y -= delta * .15;
-      fire.current.rotation.z += delta * .04;
+      fire.current.rotation.y -= delta * .15 * orbitSpeed;
+      fire.current.rotation.z += delta * .04 * orbitSpeed;
     }
     if (fireOpposite.current && !reducedMotion) {
-      fireOpposite.current.rotation.y += delta * .12;
-      fireOpposite.current.rotation.x -= delta * .04;
-    }
-    if (rings.current && !reducedMotion) {
-      rings.current.rotation.z -= delta * .06;
-      rings.current.rotation.y += delta * .03;
+      fireOpposite.current.rotation.y += delta * .12 * orbitSpeed;
+      fireOpposite.current.rotation.x -= delta * .04 * orbitSpeed;
     }
   });
 
@@ -588,33 +662,53 @@ function CoreNode({ active, reducedMotion, onSelect, onHover }: { active: boolea
 
   return <group position={node.position}>
     <group ref={shell} onClick={select} onDoubleClick={handleDoubleClick} onPointerEnter={(event) => { event.stopPropagation(); setHovered(true); document.body.style.cursor = "pointer"; onHover("core"); }} onPointerLeave={() => { setHovered(false); document.body.style.cursor = ""; onHover(null); }}>
-      <pointLight ref={lightRef} color="#ffb21c" intensity={active ? 34 : 25} distance={35} decay={1.5} />
+      <pointLight ref={lightRef} color={colors.core} intensity={active ? 34 : 25} distance={35} decay={1.5} />
       
-      {/* Inner Core Dodecahedron */}
-      <mesh ref={innerMeshRef}><dodecahedronGeometry args={[2.1, 0]} /><meshBasicMaterial color="#ffffff" toneMapped={false} /></mesh>
+      {/* Detailed Inner Blue Core Sphere */}
+      <mesh ref={innerMeshRef}>
+        <sphereGeometry args={[2.0, 32, 32]} />
+        <meshBasicMaterial ref={coreMatRef} color={colors.core} toneMapped={false} />
+      </mesh>
       
-      {/* Refractive Middle Glass Gem */}
-      <mesh><icosahedronGeometry args={[3.3, 1]} /><meshPhysicalMaterial ref={matRef} color="#ff9d00" emissive="#ffb000" emissiveIntensity={active ? 3.5 : 2.8} roughness={0.12} metalness={0.15} transmission={0.7} thickness={1.5} flatShading={true} toneMapped={false} /></mesh>
+      {/* Geodesic detailed grid layered over core */}
+      <mesh>
+        <icosahedronGeometry args={[2.03, 3]} />
+        <meshBasicMaterial ref={innerWireRef} color={colors.core} wireframe transparent opacity={0.65} blending={THREE.AdditiveBlending} toneMapped={false} />
+      </mesh>
+
+      {/* Geodesic Solid Dark Blue Faceted Shell */}
+      <mesh>
+        <icosahedronGeometry args={[3.48, 2]} />
+        <meshPhysicalMaterial color="#002b5c" roughness={0.4} metalness={0.9} transparent opacity={0.2} side={THREE.DoubleSide} />
+      </mesh>
       
-      {/* Outer Gyroscope */}
+      {/* Outer Geodesic Dyson Cage Layer 1 */}
       <group ref={fire}>
-        <mesh><icosahedronGeometry args={[3.6, 3]} /><meshBasicMaterial ref={fireMatRef} color="#ffd84a" wireframe transparent opacity={.45} blending={THREE.AdditiveBlending} toneMapped={false} /></mesh>
+        <mesh>
+          <icosahedronGeometry args={[3.5, 2]} />
+          <meshBasicMaterial ref={fireMatRef} color={colors.cage1} wireframe transparent opacity={.7} blending={THREE.AdditiveBlending} toneMapped={false} />
+        </mesh>
         <points>
           <bufferGeometry><bufferAttribute attach="attributes-position" args={[corona, 3]} /></bufferGeometry>
-          <pointsMaterial ref={coronaMatRef} color="#ffcf40" size={.11} sizeAttenuation transparent opacity={.88} depthWrite={false} blending={THREE.AdditiveBlending} toneMapped={false} />
+          <pointsMaterial ref={coronaMatRef} color={colors.cage2} size={.11} sizeAttenuation transparent opacity={.88} depthWrite={false} blending={THREE.AdditiveBlending} toneMapped={false} />
         </points>
       </group>
+
+      {/* Outer Geodesic Dyson Cage Layer 2 */}
       <group ref={fireOpposite}>
-        <mesh><icosahedronGeometry args={[3.9, 2]} /><meshBasicMaterial ref={fireOppMatRef} color="#ff5b0a" wireframe transparent opacity={.26} blending={THREE.AdditiveBlending} toneMapped={false} /></mesh>
+        <mesh>
+          <dodecahedronGeometry args={[3.53, 1]} />
+          <meshBasicMaterial ref={fireOppMatRef} color={colors.cage2} wireframe transparent opacity={.5} blending={THREE.AdditiveBlending} toneMapped={false} />
+        </mesh>
       </group>
     </group>
     
-    <group ref={rings}>
-      <mesh rotation={[Math.PI / 2, 0, 0]}><torusGeometry args={[4.5, .018, 6, 120]} /><meshBasicMaterial ref={ring1MatRef} color="#ffd84a" transparent opacity={.46} blending={THREE.AdditiveBlending} /></mesh>
-      <mesh rotation={[1.15, .3, .5]}><torusGeometry args={[5.5, .012, 6, 120]} /><meshBasicMaterial ref={ring2MatRef} color="#ff6b12" transparent opacity={.25} blending={THREE.AdditiveBlending} /></mesh>
-      <mesh rotation={[0.4, 1.2, 0.2]}><torusGeometry args={[6.2, .008, 4, 96]} /><meshBasicMaterial ref={ring3MatRef} color="#ffc52f" transparent opacity={.18} blending={THREE.AdditiveBlending} /></mesh>
-    </group>
-    <SpriteLabel text={node.shortTitle} color={node.color} y={-4.8} prominent />
+    {/* Segmented Orbiting Rings (matching image) */}
+    <SegmentedRing radius={4.5} segments={36} speed={-0.08} rotation={[Math.PI / 2, 0, 0]} color={colors.core} opacity={0.65} orbitSpeed={orbitSpeed} />
+    <SegmentedRing radius={5.5} segments={42} speed={0.05} rotation={[1.15, 0.3, 0.5]} color={colors.cage1} opacity={0.42} orbitSpeed={orbitSpeed} />
+    <SegmentedRing radius={6.2} segments={48} speed={-0.03} rotation={[0.4, 1.2, 0.2]} color={colors.cage2} opacity={0.34} orbitSpeed={orbitSpeed} />
+
+    <SpriteLabel text={node.shortTitle} color={colors.core} y={-4.8} prominent />
   </group>;
 }
 
@@ -827,7 +921,7 @@ function LocalNodeWorld({ node, reducedMotion }: { node: UniverseNode; reducedMo
   </group>;
 }
 
-function LivingNetwork({ reducedMotion }: { reducedMotion: boolean }) {
+function LivingNetwork({ reducedMotion, pulseSpeed, pulseSize, connectionDensity, sunTemperature }: { reducedMotion: boolean; pulseSpeed: number; pulseSize: number; connectionDensity: number; sunTemperature: number }) {
   const blueLinesRef = useRef<THREE.ShaderMaterial>(null);
   const purpleLinesRef = useRef<THREE.ShaderMaterial>(null);
   const pulses = useRef<THREE.InstancedMesh>(null);
@@ -915,15 +1009,6 @@ function LivingNetwork({ reducedMotion }: { reducedMotion: boolean }) {
     uAmplitude: { value: 0.3 },
   }), []);
 
-  const pulseColors = useMemo(() => {
-    const colors = new Float32Array(web.curves.length * 3 * 3);
-    web.curves.forEach((_, edgeIndex) => {
-      const color = new THREE.Color(edgeIndex % 2 === 0 ? "#39c6ff" : "#b866ff");
-      for (let pulseIndex = 0; pulseIndex < 3; pulseIndex += 1) color.toArray(colors, (edgeIndex * 3 + pulseIndex) * 3);
-    });
-    return colors;
-  }, [web.curves]);
-
   const pulseProfiles = useMemo(() => {
     const random = seededRandom(0x1e7c0);
     const profiles = new Float32Array(web.curves.length * 3 * 4);
@@ -936,6 +1021,17 @@ function LivingNetwork({ reducedMotion }: { reducedMotion: boolean }) {
     return profiles;
   }, [web.curves.length]);
 
+  useEffect(() => {
+    if (web.blueGeometry) {
+      const count = web.blueGeometry.attributes.position.count;
+      web.blueGeometry.setDrawRange(0, Math.floor(count * connectionDensity));
+    }
+    if (web.purpleGeometry) {
+      const count = web.purpleGeometry.attributes.position.count;
+      web.purpleGeometry.setDrawRange(0, Math.floor(count * connectionDensity));
+    }
+  }, [web, connectionDensity]);
+
   useEffect(() => () => { web.blueGeometry.dispose(); web.purpleGeometry.dispose(); }, [web]);
   
   const mouse3D = useMemo(() => new THREE.Vector3(), []);
@@ -947,7 +1043,6 @@ function LivingNetwork({ reducedMotion }: { reducedMotion: boolean }) {
     const blueEnergy = reducedMotion ? 0 : Math.sin(elapsed * .19) * .055 + Math.sin(elapsed * .071 + 2.1) * .035;
     const purpleEnergy = reducedMotion ? 0 : Math.sin(elapsed * .143 + 1.8) * .05 + Math.sin(elapsed * .053) * .04;
     
-    // Calculate mouse intersection in 3D (camera perpendicular plane)
     state.camera.getWorldDirection(normal);
     normal.negate();
     const plane = new THREE.Plane(normal, 0);
@@ -956,38 +1051,80 @@ function LivingNetwork({ reducedMotion }: { reducedMotion: boolean }) {
     if (blueLinesRef.current) {
       blueLinesRef.current.uniforms.uTime.value = elapsed;
       blueLinesRef.current.uniforms.uOpacity.value = (0.38 + blueEnergy) * flicker;
+      const blueCol = new THREE.Color();
+      if (sunTemperature <= 1.0) {
+        const t = (sunTemperature - 0.2) / 0.8;
+        blueCol.lerpColors(new THREE.Color("#ffaa00"), new THREE.Color("#38cfff"), t);
+      } else {
+        const t = (sunTemperature - 1.0) / 1.0;
+        blueCol.lerpColors(new THREE.Color("#38cfff"), new THREE.Color("#6022ff"), t);
+      }
+      blueLinesRef.current.uniforms.uColor.value.copy(blueCol);
     }
     if (purpleLinesRef.current) {
       purpleLinesRef.current.uniforms.uTime.value = elapsed;
       purpleLinesRef.current.uniforms.uOpacity.value = (0.35 + purpleEnergy) * flicker;
+      const purpleCol = new THREE.Color();
+      if (sunTemperature <= 1.0) {
+        const t = (sunTemperature - 0.2) / 0.8;
+        purpleCol.lerpColors(new THREE.Color("#ff3c00"), new THREE.Color("#b55cff"), t);
+      } else {
+        const t = (sunTemperature - 1.0) / 1.0;
+        purpleCol.lerpColors(new THREE.Color("#b55cff"), new THREE.Color("#bd2cff"), t);
+      }
+      purpleLinesRef.current.uniforms.uColor.value.copy(purpleCol);
     }
     
     const pulseMesh = pulses.current;
     if (!pulseMesh) return;
     
+    const activeCurvesCount = Math.floor(web.curves.length * connectionDensity);
+
     web.curves.forEach((curve, edgeIndex) => {
       for (let pulseIndex = 0; pulseIndex < 3; pulseIndex += 1) {
         const instanceIndex = edgeIndex * 3 + pulseIndex;
+        
+        if (edgeIndex >= activeCurvesCount) {
+          scale.setScalar(0);
+          matrix.compose(position, quaternion, scale);
+          pulseMesh.setMatrixAt(instanceIndex, matrix);
+          continue;
+        }
+
         const speed = pulseProfiles[instanceIndex * 4];
         const phase = pulseProfiles[instanceIndex * 4 + 1];
         const shimmer = pulseProfiles[instanceIndex * 4 + 2];
         const size = pulseProfiles[instanceIndex * 4 + 3];
-        const progress = reducedMotion ? phase : (elapsed * speed + phase) % 1;
+        const progress = reducedMotion ? phase : (elapsed * speed * pulseSpeed + phase) % 1;
         const pulse = reducedMotion ? .7 : .18 + Math.pow(.5 + Math.sin(elapsed * shimmer + phase * Math.PI * 2) * .5, 3) * .82;
         position.copy(curve.getPointAt(progress));
         
-        // Proximity scaling
         const dist = position.distanceTo(mouse3D);
         const influence = dist < 5.0 ? Math.max(0, 1 - dist / 5.0) : 0;
         
-        scale.setScalar((.15 + Math.sin(progress * Math.PI) * .28) * size * pulse * flicker * (1.0 + influence * 2.8));
+        scale.setScalar((.15 + Math.sin(progress * Math.PI) * .28) * size * pulse * flicker * (1.0 + influence * 2.8) * pulseSize);
         matrix.compose(position, quaternion, scale);
         pulseMesh.setMatrixAt(instanceIndex, matrix);
+
+        const col = new THREE.Color();
+        const baseCol = edgeIndex % 2 === 0 ? new THREE.Color("#39c6ff") : new THREE.Color("#b866ff");
+        if (sunTemperature <= 1.0) {
+          const t = (sunTemperature - 0.2) / 0.8;
+          const targetCol = edgeIndex % 2 === 0 ? new THREE.Color("#ffaa00") : new THREE.Color("#ff3c00");
+          col.lerpColors(targetCol, baseCol, t);
+        } else {
+          const t = (sunTemperature - 1.0) / 1.0;
+          const targetCol = edgeIndex % 2 === 0 ? new THREE.Color("#6022ff") : new THREE.Color("#bd2cff");
+          col.lerpColors(baseCol, targetCol, t);
+        }
+        pulseMesh.setColorAt(instanceIndex, col);
       }
     });
     pulseMesh.instanceMatrix.needsUpdate = true;
+    if (pulseMesh.instanceColor) {
+      pulseMesh.instanceColor.needsUpdate = true;
+    }
 
-    // Trigger subtle sound synth clicks periodically for moving data pulses
     if (!reducedMotion) {
       uiosAudio.triggerPulse();
     }
@@ -1017,8 +1154,8 @@ function LivingNetwork({ reducedMotion }: { reducedMotion: boolean }) {
       />
     </lineSegments>
     <instancedMesh ref={pulses} args={[undefined, undefined, web.curves.length * 3]} frustumCulled={false}>
-      <sphereGeometry args={[1, 7, 7]}><instancedBufferAttribute attach="attributes-instanceColor" args={[pulseColors, 3]} /></sphereGeometry>
-      <meshBasicMaterial vertexColors transparent opacity={.95} blending={THREE.AdditiveBlending} toneMapped={false} />
+      <sphereGeometry args={[.1, 8, 8]} />
+      <meshBasicMaterial color="#ffffff" transparent blending={THREE.AdditiveBlending} depthWrite={false} toneMapped={false} />
     </instancedMesh>
   </group>;
 }
@@ -1141,16 +1278,16 @@ function CameraRig({ selected, focusVersion, reducedMotion }: { selected: NodeId
   return null;
 }
 
-function UniverseScene({ selected, focusVersion, hasWebGL2, reducedMotion, onSelect, onHover }: { selected: NodeId; focusVersion: number; hasWebGL2: boolean; reducedMotion: boolean; onSelect: (id: NodeId) => void; onHover: (id: NodeId | null) => void }) {
+function UniverseScene({ selected, focusVersion, hasWebGL2, reducedMotion, onSelect, onHover, sunTemperature, pulseSpeed, pulseSize, domeState, orbitSpeed, connectionDensity }: { selected: NodeId; focusVersion: number; hasWebGL2: boolean; reducedMotion: boolean; onSelect: (id: NodeId) => void; onHover: (id: NodeId | null) => void; sunTemperature: number; pulseSpeed: number; pulseSize: number; domeState: "auto" | "force-on" | "force-off"; orbitSpeed: number; connectionDensity: number }) {
   return <>
     <color attach="background" args={["#010207"]} />
     <fog attach="fog" args={["#010207", 18, 72]} />
     <ambientLight intensity={.1} />
     <directionalLight color="#7896ff" intensity={.42} position={[4, 8, 8]} />
     <StarField reducedMotion={reducedMotion} />
-    <LivingNetwork reducedMotion={reducedMotion} />
-    <AegisDome active={selected === "aegis"} reducedMotion={reducedMotion} />
-    <CoreNode active={selected === "core"} reducedMotion={reducedMotion} onSelect={onSelect} onHover={onHover} />
+    <LivingNetwork reducedMotion={reducedMotion} pulseSpeed={pulseSpeed} pulseSize={pulseSize} connectionDensity={connectionDensity} sunTemperature={sunTemperature} />
+    <AegisDome active={selected === "aegis"} reducedMotion={reducedMotion} domeState={domeState} />
+    <CoreNode active={selected === "core"} reducedMotion={reducedMotion} onSelect={onSelect} onHover={onHover} sunTemperature={sunTemperature} orbitSpeed={orbitSpeed} />
     {NODES.filter((node) => node.id !== "core").map((node) => <IntelligenceNode key={node.id} node={node} active={selected === node.id} reducedMotion={reducedMotion} onSelect={onSelect} onHover={onHover} />)}
     {selected !== "core" ? <LocalNodeWorld key={selected} node={NODE_MAP.get(selected)!} reducedMotion={reducedMotion} /> : null}
     <CameraRig selected={selected} focusVersion={focusVersion} reducedMotion={reducedMotion} />
@@ -1337,6 +1474,15 @@ export function IntelligenceUniverse() {
   const [introVersion, setIntroVersion] = useState(0);
   const hudLockUntil = useRef(0);
 
+  // 3D Cinematic Playground states
+  const [drawerOpen, setDrawerOpen] = useState(false);
+  const [sunTemperature, setSunTemperature] = useState(1.0); // 0.2 to 2.0
+  const [pulseSpeed, setPulseSpeed] = useState(1.0); // 0.2 to 3.0
+  const [pulseSize, setPulseSize] = useState(1.0); // 0.2 to 3.0
+  const [domeState, setDomeState] = useState<"auto" | "force-on" | "force-off">("auto");
+  const [orbitSpeed, setOrbitSpeed] = useState(1.0); // 0.0 to 3.0
+  const [connectionDensity, setConnectionDensity] = useState(1.0); // 0.2 to 1.5
+
   const activeId = hoveredNode || clickedNode;
   const node = NODE_MAP.get(activeId || "core")!;
 
@@ -1425,7 +1571,7 @@ export function IntelligenceUniverse() {
   return <section className={`intelligence-universe${ready ? " universe-ready" : ""}`} aria-label="Interactive UIOS intelligence universe">
     <CanvasErrorBoundary key={introVersion}>
       <Canvas dpr={[1, 1.5]} camera={{ position: [0, 16, 68], fov: 48, near: .1, far: 120 }} gl={{ antialias: true, powerPreference: "high-performance" }} style={{ width: "100%", height: "100%", position: "absolute", top: 0, left: 0 }}>
-        <Suspense fallback={null}><UniverseScene selected={clickedNode || "core"} focusVersion={focusVersion} hasWebGL2={hasWebGL2} reducedMotion={reducedMotion} onSelect={selectSpatialNode} onHover={setHoveredNode} /></Suspense>
+        <Suspense fallback={null}><UniverseScene selected={clickedNode || "core"} focusVersion={focusVersion} hasWebGL2={hasWebGL2} reducedMotion={reducedMotion} onSelect={selectSpatialNode} onHover={setHoveredNode} sunTemperature={sunTemperature} pulseSpeed={pulseSpeed} pulseSize={pulseSize} domeState={domeState} orbitSpeed={orbitSpeed} connectionDensity={connectionDensity} /></Suspense>
       </Canvas>
     </CanvasErrorBoundary>
 
@@ -1433,6 +1579,7 @@ export function IntelligenceUniverse() {
       <button type="button" className="universe-brand" onClick={() => { setClickedNode("core"); setHoveredNode(null); }} aria-label="Return to the UIOS Intelligence Core"><span>UI</span><i />S<small>INTELLIGENCE UNIVERSE</small></button>
       <div className="universe-coordinates"><i /> LIVE FABRIC <span>WORLD 003</span></div>
       <div className="universe-header-actions" style={{ justifySelf: "end", display: "flex", gap: "10px", pointerEvents: "auto" }}>
+        <button type="button" className={`universe-config-toggle ${drawerOpen ? "active" : ""}`} onClick={() => setDrawerOpen(d => !d)} aria-label="Open sandbox visual controls">⚙ CONFIG PANEL</button>
         <button type="button" className={`universe-sound-toggle ${muted ? "" : "active"}`} onClick={toggleMute} aria-label={muted ? "Enable universe audio" : "Disable universe audio"}>{muted ? "🔇 AUDIO MUTED" : "🔊 AUDIO ACTIVE"}</button>
         <button type="button" className="universe-reset" onClick={() => { setClickedNode(null); setHoveredNode(null); }}>RESET VIEW <span>⌖</span></button>
       </div>
@@ -1520,6 +1667,55 @@ export function IntelligenceUniverse() {
         <div className="intro-logo-mark"><span>UI</span><i /><span>S</span></div>
         <strong>THE FABRIC OF INTELLIGENCE</strong>
         <small>THE FABRIC OF INTELLIGENCE</small>
+      </div>
+    </div>
+
+    {/* Collapsible glassmorphic settings drawer */}
+    <div className={`universe-settings-drawer ${drawerOpen ? "open" : ""}`} onPointerDown={(event) => event.stopPropagation()}>
+      <div className="drawer-header">
+        <h2>⚙ COGNITIVE CONFIG</h2>
+        <button type="button" className="drawer-close" onClick={() => setDrawerOpen(false)}>×</button>
+      </div>
+      <div className="drawer-body">
+        <div className="drawer-control-group">
+          <label>CORE TEMPERATURE: <span>{sunTemperature.toFixed(1)}x</span></label>
+          <input type="range" min="0.2" max="2.0" step="0.1" value={sunTemperature} onChange={(e) => setSunTemperature(parseFloat(e.target.value))} />
+          <div className="control-help">adjusts sun core hue & light emissions from warm gold to neon purple</div>
+        </div>
+
+        <div className="drawer-control-group">
+          <label>NETWORK DENSITY: <span>{Math.round(connectionDensity * 100)}%</span></label>
+          <input type="range" min="0.2" max="1.5" step="0.05" value={connectionDensity} onChange={(e) => setConnectionDensity(parseFloat(e.target.value))} />
+          <div className="control-help">procedurally limits drawn network filaments and moving energy signals</div>
+        </div>
+
+        <div className="drawer-control-group">
+          <label>PULSE VELOCITY: <span>{pulseSpeed.toFixed(1)}x</span></label>
+          <input type="range" min="0.2" max="3.0" step="0.1" value={pulseSpeed} onChange={(e) => setPulseSpeed(parseFloat(e.target.value))} />
+          <div className="control-help">modulates propagation speed of raw data flow through the fabric lines</div>
+        </div>
+
+        <div className="drawer-control-group">
+          <label>PULSE DIMENSION: <span>{pulseSize.toFixed(1)}x</span></label>
+          <input type="range" min="0.2" max="3.0" step="0.1" value={pulseSize} onChange={(e) => setPulseSize(parseFloat(e.target.value))} />
+          <div className="control-help">scales the diameter of neon signal sparks traversing connection paths</div>
+        </div>
+
+        <div className="drawer-control-group">
+          <label>AUTO-ORBIT VELOCITY: <span>{orbitSpeed.toFixed(1)}x</span></label>
+          <input type="range" min="0.0" max="3.0" step="0.1" value={orbitSpeed} onChange={(e) => setOrbitSpeed(parseFloat(e.target.value))} />
+          <div className="control-help">rotates Dyson cages and orbital rings around the central sun</div>
+        </div>
+
+        <div className="drawer-control-group">
+          <label>AEGIS SHIELD DOME</label>
+          <div className="toggle-buttons-row">
+            <button type="button" className={domeState === "force-on" ? "active" : ""} onClick={() => setDomeState("force-on")}>FORCE ON</button>
+            <button type="button" className={domeState === "auto" ? "active" : ""} onClick={() => setDomeState("auto")}>AUTO</button>
+            <button type="button" className={domeState === "force-off" ? "active" : ""} onClick={() => setDomeState("force-off")}>FORCE OFF</button>
+          </div>
+          <div className="control-help">overrides safety net dome wireframe activation sequences</div>
+        </div>
       </div>
     </div>
   </section>;

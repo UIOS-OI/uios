@@ -182,3 +182,202 @@ h1 { font-size: clamp(48px, 8vw, 88px); letter-spacing: -.075em; line-height: .9
 @media (max-width: 520px) { .universe-index button:nth-child(n+5) { display: none; }.universe-readout p { max-width: 270px; }.landing-navigation-brand { font-size: 19px; }.ecosystem-pillar { padding: 9px 11px; }.ecosystem-pillar strong { font-size: 10px; }.ecosystem-pillar-router { left: 50%; top: 5%; transform: translateX(-50%); }.ecosystem-pillar-router:hover { transform: translateX(-50%) translateY(-3px); }.ecosystem-pillar-aegis { right: 50%; top: 18%; transform: translateX(50%); }.ecosystem-pillar-aegis:hover { transform: translateX(50%) translateY(-3px); }.ecosystem-pillar-memory { bottom: 4%; }.ecosystem-core { top: 54%; } }
 @media (max-width: 760px) { .universe-index button { font-size: 11px; font-weight: 750; padding: 10px 13px; } }
 @media (prefers-reduced-motion: reduce) { .universe-intro, .universe-intro *, .universe-intro *:before, .universe-intro *:after { animation: none !important; transition: none; }.universe-coordinates i, .ecosystem-core:after, [data-active] .ecosystem-connections path { animation: none; }.ecosystem-node i { display: none; } }
+
+.universe-config-toggle {
+  background: rgba(12, 22, 51, 0.45);
+  border: 1px solid rgba(153, 166, 255, 0.24);
+  border-radius: 9px;
+  color: #aeb7d9;
+  cursor: pointer;
+  font-family: ui-monospace, SFMono-Regular, monospace;
+  font-size: 10px;
+  font-weight: 750;
+  letter-spacing: .08em;
+  padding: 8px 14px;
+  text-shadow: 0 0 10px rgba(111,211,255,0.15);
+  transition: background 0.3s, border-color 0.3s, color 0.3s, box-shadow 0.3s;
+}
+
+.universe-config-toggle:hover {
+  background: rgba(12, 22, 51, 0.72);
+  border-color: rgba(94, 219, 255, 0.58);
+  color: #fff;
+  box-shadow: 0 0 14px rgba(94, 219, 255, 0.22);
+}
+
+.universe-config-toggle.active {
+  background: linear-gradient(90deg, rgba(25, 189, 255, 0.18), rgba(165, 69, 255, 0.14));
+  border-color: #5ec0ff;
+  color: #fff;
+  box-shadow: 0 0 20px rgba(94, 219, 255, 0.36);
+}
+
+/* Slide out control drawer */
+.universe-settings-drawer {
+  position: absolute;
+  top: 80px;
+  right: -360px;
+  width: 320px;
+  bottom: clamp(24px, 5vh, 48px);
+  backdrop-filter: blur(28px);
+  background: linear-gradient(155deg, rgba(5,13,34,0.85), rgba(19,7,38,0.8));
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 20px;
+  box-shadow: -10px 24px 60px rgba(0,0,0,0.6), inset 0 1px rgba(255,255,255,0.05);
+  padding: 24px 28px;
+  z-index: 10;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  transition: transform 0.45s cubic-bezier(0.2, 0.8, 0.2, 1);
+  pointer-events: auto;
+}
+
+.universe-settings-drawer.open {
+  transform: translateX(-384px);
+}
+
+.universe-settings-drawer .drawer-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  padding-bottom: 12px;
+}
+
+.universe-settings-drawer .drawer-header h2 {
+  color: #f3f5ff;
+  font-family: ui-monospace, SFMono-Regular, monospace;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  margin: 0;
+  text-shadow: 0 0 14px rgba(94, 219, 255, 0.28);
+}
+
+.universe-settings-drawer .drawer-close {
+  background: none;
+  border: none;
+  color: #6d789c;
+  cursor: pointer;
+  font-size: 20px;
+  line-height: 1;
+  padding: 4px;
+  transition: color 0.2s;
+}
+
+.universe-settings-drawer .drawer-close:hover {
+  color: #fff;
+}
+
+.universe-settings-drawer .drawer-body {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+
+/* Custom Scrollbar for drawer body */
+.universe-settings-drawer .drawer-body::-webkit-scrollbar {
+  width: 4px;
+}
+.universe-settings-drawer .drawer-body::-webkit-scrollbar-track {
+  background: rgba(255,255,255,0.02);
+}
+.universe-settings-drawer .drawer-body::-webkit-scrollbar-thumb {
+  background: rgba(255,255,255,0.1);
+  border-radius: 2px;
+}
+
+.universe-settings-drawer .drawer-control-group {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+
+.universe-settings-drawer .drawer-control-group label {
+  color: #8792b6;
+  font-family: ui-monospace, SFMono-Regular, monospace;
+  font-size: 8px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  display: flex;
+  justify-content: space-between;
+}
+
+.universe-settings-drawer .drawer-control-group label span {
+  color: #00f3ff;
+  font-weight: 750;
+  text-shadow: 0 0 8px rgba(0, 243, 255, 0.35);
+}
+
+/* Futuristic Slider inputs */
+.universe-settings-drawer .drawer-control-group input[type="range"] {
+  -webkit-appearance: none;
+  width: 100%;
+  height: 4px;
+  background: rgba(255, 255, 255, 0.06);
+  border-radius: 2px;
+  outline: none;
+  margin: 6px 0;
+  border: 1px solid rgba(255, 255, 255, 0.02);
+}
+
+.universe-settings-drawer .drawer-control-group input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: #00f3ff;
+  box-shadow: 0 0 10px #00f3ff, 0 0 4px rgba(255, 255, 255, 0.8);
+  cursor: pointer;
+  transition: transform 0.15s, background-color 0.15s;
+}
+
+.universe-settings-drawer .drawer-control-group input[type="range"]::-webkit-slider-thumb:hover {
+  transform: scale(1.25);
+  background: #ffffff;
+}
+
+.universe-settings-drawer .control-help {
+  color: #56617f;
+  font-family: ui-monospace, monospace;
+  font-size: 6.5px;
+  line-height: 1.4;
+  letter-spacing: 0.02em;
+}
+
+/* Toggle row controls */
+.universe-settings-drawer .toggle-buttons-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 6px;
+  margin: 4px 0;
+}
+
+.universe-settings-drawer .toggle-buttons-row button {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 6px;
+  color: #6d789c;
+  cursor: pointer;
+  font-family: ui-monospace, monospace;
+  font-size: 8px;
+  font-weight: 700;
+  padding: 6px 0;
+  transition: background 0.25s, border-color 0.25s, color 0.25s, box-shadow 0.25s;
+}
+
+.universe-settings-drawer .toggle-buttons-row button:hover {
+  background: rgba(255, 255, 255, 0.06);
+  border-color: rgba(255, 255, 255, 0.15);
+  color: #eef2ff;
+}
+
+.universe-settings-drawer .toggle-buttons-row button.active {
+  background: linear-gradient(135deg, rgba(37, 200, 255, 0.15), rgba(165, 69, 255, 0.1));
+  border-color: rgba(37, 200, 255, 0.58);
+  color: #fff;
+  box-shadow: 0 0 12px rgba(37, 200, 255, 0.28);
+}
