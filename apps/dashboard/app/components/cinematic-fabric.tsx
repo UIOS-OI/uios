@@ -456,13 +456,15 @@ function CoreNode({ active, reducedMotion, onSelect, onHover }: { active: boolea
   const rings = useRef<THREE.Group>(null);
   const lightRef = useRef<THREE.PointLight>(null);
   
-  const matRef = useRef<THREE.MeshBasicMaterial>(null);
+  const matRef = useRef<THREE.MeshPhysicalMaterial>(null);
   const edgeMatRef = useRef<THREE.MeshBasicMaterial>(null);
   const dodecaRef = useRef<THREE.Mesh>(null);
+  const octaRef = useRef<THREE.Mesh>(null);
   const innerIcosaRef = useRef<THREE.Mesh>(null);
   
-  const dodecaMatRef = useRef<THREE.MeshBasicMaterial>(null);
-  const innerIcosaMatRef = useRef<THREE.MeshBasicMaterial>(null);
+  const dodecaMatRef = useRef<THREE.MeshPhysicalMaterial>(null);
+  const octaMatRef = useRef<THREE.MeshBasicMaterial>(null);
+  const innerIcosaMatRef = useRef<THREE.MeshPhysicalMaterial>(null);
   const spinesMatRef = useRef<THREE.LineBasicMaterial>(null);
   const spineTipsMatRef = useRef<THREE.PointsMaterial>(null);
   const pointsMatRef = useRef<THREE.PointsMaterial>(null);
@@ -563,10 +565,11 @@ function CoreNode({ active, reducedMotion, onSelect, onHover }: { active: boolea
 
     if (lightRef.current) lightRef.current.intensity = (active ? 38 : 28) * flicker + influence * 15;
     
-    if (matRef.current) matRef.current.opacity = 0.3 * flicker;
+    if (matRef.current) matRef.current.opacity = 0.72 * flicker;
     if (edgeMatRef.current) edgeMatRef.current.opacity = 0.5 * flicker;
-    if (dodecaMatRef.current) dodecaMatRef.current.opacity = 0.3 * flicker;
-    if (innerIcosaMatRef.current) innerIcosaMatRef.current.opacity = 0.42 * flicker;
+    if (dodecaMatRef.current) dodecaMatRef.current.opacity = 0.6 * flicker;
+    if (octaMatRef.current) octaMatRef.current.opacity = 0.3 * flicker;
+    if (innerIcosaMatRef.current) innerIcosaMatRef.current.opacity = 0.85 * flicker;
     if (spinesMatRef.current) spinesMatRef.current.opacity = 0.55 * flicker;
     if (spineTipsMatRef.current) spineTipsMatRef.current.opacity = 0.92 * flicker;
     if (pointsMatRef.current) pointsMatRef.current.opacity = 0.82 * flicker;
@@ -708,6 +711,10 @@ function CoreNode({ active, reducedMotion, onSelect, onHover }: { active: boolea
       dodecaRef.current.rotation.y += delta * 0.22;
       dodecaRef.current.rotation.x -= delta * 0.08;
     }
+    if (octaRef.current && !reducedMotion) {
+      octaRef.current.rotation.z += delta * 0.18;
+      octaRef.current.rotation.y -= delta * 0.15;
+    }
     if (innerIcosaRef.current && !reducedMotion) {
       innerIcosaRef.current.rotation.y -= delta * 0.32;
       innerIcosaRef.current.rotation.z += delta * 0.12;
@@ -740,14 +747,22 @@ function CoreNode({ active, reducedMotion, onSelect, onHover }: { active: boolea
     <group ref={shell} onClick={select} onDoubleClick={handleDoubleClick} onPointerEnter={(event) => { event.stopPropagation(); setHovered(true); document.body.style.cursor = "pointer"; onHover("core"); }} onPointerLeave={() => { setHovered(false); document.body.style.cursor = ""; onHover(null); }}>
       <pointLight ref={lightRef} color="#00f0ff" intensity={active ? 38 : 28} distance={35} decay={1.5} />
       
-      {/* 1. Outer Evolving Glass Crystal Facets (Standard Transparent Shader) */}
+      {/* 1. Outer Evolving Glass Crystal Facets (Refractive Physical Glass) */}
       <mesh>
         <icosahedronGeometry ref={shellGeomRef} args={[3.3, 0]} />
-        <meshBasicMaterial 
+        <meshPhysicalMaterial 
           ref={matRef} 
-          color="#030514" 
+          color="#060c24" 
+          emissive="#002f3c"
+          emissiveIntensity={1.8}
+          roughness={0.1}
+          metalness={0.9}
+          clearcoat={1.0}
+          clearcoatRoughness={0.05}
+          transmission={0.65}
+          thickness={2.2}
           transparent={true}
-          opacity={0.3}
+          opacity={0.72}
           depthWrite={true}
         />
       </mesh>
@@ -774,17 +789,50 @@ function CoreNode({ active, reducedMotion, onSelect, onHover }: { active: boolea
       {/* 4. Radiolarian Spine Tip Synapses (Glowing nodes at the tips) */}
       <points>
         <primitive ref={spineTipsGeomRef} object={tipsGeom} attach="geometry" />
-        <pointsMaterial ref={spineTipsMatRef} color="#ffffff" size={0.18} sizeAttenuation={true} transparent={true} opacity={0.92} depthWrite={false} blending={THREE.AdditiveBlending} />
+        <pointsMaterial ref={spineTipsMatRef} color="#ffffff" size={0.32} sizeAttenuation={true} transparent={true} opacity={0.92} depthWrite={false} blending={THREE.AdditiveBlending} />
       </points>
 
       {/* 5. Nested Rotating Quasicrystal Cages */}
       <mesh ref={dodecaRef}>
         <dodecahedronGeometry args={[2.4, 0]} />
-        <meshBasicMaterial ref={dodecaMatRef} color="#00f0ff" wireframe transparent opacity={0.3} blending={THREE.AdditiveBlending} />
+        <meshPhysicalMaterial 
+          ref={dodecaMatRef} 
+          color="#002233" 
+          emissive="#00b4d8"
+          emissiveIntensity={2.5}
+          roughness={0.2}
+          metalness={0.8}
+          transparent 
+          opacity={0.6} 
+          wireframe={false} 
+        />
       </mesh>
+      
+      <mesh ref={octaRef}>
+        <octahedronGeometry args={[1.8, 0]} />
+        <meshBasicMaterial 
+          ref={octaMatRef} 
+          color="#00ffff" 
+          wireframe 
+          transparent 
+          opacity={0.3} 
+          blending={THREE.AdditiveBlending} 
+        />
+      </mesh>
+
       <mesh ref={innerIcosaRef}>
-        <icosahedronGeometry args={[1.4, 0]} />
-        <meshBasicMaterial ref={innerIcosaMatRef} color="#a855f7" wireframe transparent opacity={0.42} blending={THREE.AdditiveBlending} />
+        <icosahedronGeometry args={[1.1, 0]} />
+        <meshPhysicalMaterial 
+          ref={innerIcosaMatRef} 
+          color="#1a0033" 
+          emissive="#a855f7"
+          emissiveIntensity={4.2}
+          roughness={0.15}
+          metalness={0.9}
+          transparent 
+          opacity={0.85} 
+          wireframe={false} 
+        />
       </mesh>
 
       {/* 6. Gyroid Synaptic Swarm (Drifting internal energy paths) */}
