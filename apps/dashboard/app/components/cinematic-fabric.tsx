@@ -928,10 +928,10 @@ function LivingNetwork({ reducedMotion }: { reducedMotion: boolean }) {
     const random = seededRandom(0x1e7c0);
     const profiles = new Float32Array(web.curves.length * 3 * 4);
     for (let index = 0; index < web.curves.length * 3; index += 1) {
-      profiles[index * 4] = .026 + random() * .032;
+      profiles[index * 4] = .26 + random() * .34; // 10x faster zippy electrical signals
       profiles[index * 4 + 1] = random();
-      profiles[index * 4 + 2] = .72 + random() * .8;
-      profiles[index * 4 + 3] = .72 + random() * .72;
+      profiles[index * 4 + 2] = 1.8 + random() * 2.2; // faster shimmer rate
+      profiles[index * 4 + 3] = 0.9 + random() * 0.9; // larger pulse multipliers
     }
     return profiles;
   }, [web.curves.length]);
@@ -980,7 +980,7 @@ function LivingNetwork({ reducedMotion }: { reducedMotion: boolean }) {
         const dist = position.distanceTo(mouse3D);
         const influence = dist < 5.0 ? Math.max(0, 1 - dist / 5.0) : 0;
         
-        scale.setScalar((.035 + Math.sin(progress * Math.PI) * .07) * size * pulse * flicker * (1.0 + influence * 2.8));
+        scale.setScalar((.15 + Math.sin(progress * Math.PI) * .28) * size * pulse * flicker * (1.0 + influence * 2.8));
         matrix.compose(position, quaternion, scale);
         pulseMesh.setMatrixAt(instanceIndex, matrix);
       }
