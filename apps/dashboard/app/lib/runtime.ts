@@ -46,15 +46,36 @@ export function verifyWorkflowApproval(token: string, tenantId: string, workflow
   } catch { return false; }
 }
 
-export function resolveTenantId(request: NextRequest): string {
-  return resolveAuth(request).tenantId;
+export async function resolveTenantId(request: NextRequest): Promise<string> {
+  return (await resolveAuth(request)).tenantId;
 }
 
-export function resolveAuth(request: NextRequest): { tenantId: string; role: ApiKeyRole } {
+export async function resolveAuth(request: NextRequest): Promise<{ tenantId: string; role: ApiKeyRole }> {
   const fallback = (): { tenantId: string; role: ApiKeyRole } => process.env.NODE_ENV === "production" ? { tenantId: "__unauthenticated__", role: "viewer" } : { tenantId: "local-development", role: "owner" };
+
+  const tenantIdHeader = request.headers.get("x-uios-tenant-id");
+  const roleHeader = request.headers.get("x-uios-role");
+  const signatureHeader = request.headers.get("x-uios-signature");
+
+  if (tenantIdHeader && roleHeader && signatureHeader) {
+    const secret = workspaceSecret ?? (process.env.NODE_ENV === "production" ? null : developmentSecret);
+    if (secret) {
+      const expectedSignature = createHmac("sha256", secret).update(`${tenantIdHeader}:${roleHeader}`).digest("base64url");
+      let matches = false;
+      try {
+        matches = timingSafeEqual(Buffer.from(signatureHeader), Buffer.from(expectedSignature));
+      } catch {
+        matches = false;
+      }
+      if (matches) {
+        return { tenantId: tenantIdHeader, role: roleHeader as ApiKeyRole };
+      }
+    }
+  }
+
   const authorization = request.headers.get("authorization");
   if (authorization?.startsWith("Bearer ")) {
-    const auth = resolveApiKeyAuth(authorization.slice(7).trim());
+    const auth = await resolveApiKeyAuth(authorization.slice(7).trim());
     if (auth) return auth;
     return { tenantId: "__invalid_api_key__", role: "viewer" };
   }
@@ -82,15 +103,17 @@ export function resolveAuth(request: NextRequest): { tenantId: string; role: Api
   return fallback();
 }
 
-export function rejectInvalidApiKey(request: NextRequest): Response | null {
+
+export async function rejectInvalidApiKey(request: NextRequest): Promise<Response | null> {
   const authorization = request.headers.get("authorization");
-  if (authorization?.startsWith("Bearer ") && resolveTenantId(request) === "__invalid_api_key__") return Response.json({ error: "Invalid or revoked UIOS API key." }, { status: 401, headers: { "WWW-Authenticate": "Bearer" } });
+  if (authorization?.startsWith("Bearer ") && (await resolveTenantId(request)) === "__invalid_api_key__") return Response.json({ error: "Invalid or revoked UIOS API key." }, { status: 401, headers: { "WWW-Authenticate": "Bearer" } });
   return null;
 }
 
-export function rejectUnauthorized(request: NextRequest): Response | null {
-  const invalid = rejectInvalidApiKey(request); if (invalid) return invalid;
-  if (resolveAuth(request).tenantId === "__unauthenticated__") return Response.json({ error: "A signed workspace session or UIOS API key is required." }, { status: 401, headers: { "WWW-Authenticate": "Bearer" } });
+export async function rejectUnauthorized(request: NextRequest): Promise<Response | null> {
+  const invalid = await rejectInvalidApiKey(request); if (invalid) return invalid;
+  const auth = await resolveAuth(request);
+  if (auth.tenantId === "__unauthenticated__") return Response.json({ error: "A signed workspace session or UIOS API key is required." }, { status: 401, headers: { "WWW-Authenticate": "Bearer" } });
   return null;
 }
 
@@ -103,9 +126,9 @@ export function rejectCrossOriginMutation(request: NextRequest): Response | null
   return null;
 }
 
-export function requireRole(request: NextRequest, allowed: ApiKeyRole[]): Response | null {
-  const invalid = rejectInvalidApiKey(request); if (invalid) return invalid;
-  const auth = resolveAuth(request);
+export async function requireRole(request: NextRequest, allowed: ApiKeyRole[]): Promise<Response | null> {
+  const invalid = await rejectInvalidApiKey(request); if (invalid) return invalid;
+  const auth = await resolveAuth(request);
   if (auth.tenantId === "__unauthenticated__") return Response.json({ error: "A signed workspace session or UIOS API key is required." }, { status: 401, headers: { "WWW-Authenticate": "Bearer" } });
   if (!allowed.includes(auth.role)) return Response.json({ error: "This action requires an elevated workspace role." }, { status: 403 });
   return null;
@@ -115,27 +138,27 @@ export function estimateUnits(messages: ChatMessage[]): number {
   return Math.max(1, Math.ceil(messages.reduce((total, message) => total + message.content.length, 0) / 4000));
 }
 
-export function recordUsage(tenantId: string, units: number, kind: UsageEvent["kind"] = "model_request"): UsageState {
-  return writeUsage(tenantId, units, kind);
+export async function recordUsage(tenantId: string, units: number, kind: UsageEvent["kind"] = "model_request"): Promise<UsageState> {
+  return await writeUsage(tenantId, units, kind);
 }
 
-export function getUsage(tenantId: string): UsageState {
-  return readUsage(tenantId);
+export async function getUsage(tenantId: string): Promise<UsageState> {
+  return await readUsage(tenantId);
 }
 
-export function getPlanLimit(tenantId: string): number {
-  const workspace = findWorkspace(tenantId);
+export async function getPlanLimit(tenantId: string): Promise<number> {
+  const workspace = await findWorkspace(tenantId);
   if (workspace?.plan === "enterprise") return Number(process.env.UIOS_ENTERPRISE_PLAN_LIMIT_UNITS ?? Number.MAX_SAFE_INTEGER);
   if (workspace?.plan === "scale") return Number(process.env.UIOS_SCALE_PLAN_LIMIT_UNITS ?? 25_000);
   return Number(process.env.UIOS_PLAN_LIMIT_UNITS ?? 1_000);
 }
 
-export function getWorkspacePlan(tenantId: string): "builder" | "scale" | "enterprise" {
-  return findWorkspace(tenantId)?.plan ?? "builder";
+export async function getWorkspacePlan(tenantId: string): Promise<"builder" | "scale" | "enterprise"> {
+  return (await findWorkspace(tenantId))?.plan ?? "builder";
 }
 
-export function listUsageEvents(tenantId: string, limit = 50): UsageEvent[] {
-  return readUsageEvents(tenantId, limit);
+export async function listUsageEvents(tenantId: string, limit = 50): Promise<UsageEvent[]> {
+  return await readUsageEvents(tenantId, limit);
 }
 
 export function checkRateLimit(tenantId: string, bucket = "inference"): { allowed: boolean; retryAfterSeconds: number } {

@@ -1,0 +1,242 @@
+{
+  "timestamp": "2026-07-14T20:43:01.801Z",
+  "total": 39,
+  "passed": 29,
+  "failed": 10,
+  "tests": [
+    {
+      "id": "TC-PERSIST-01",
+      "name": "Database Initialization & Schema Auto-Migration",
+      "status": "passed",
+      "error": null
+    },
+    {
+      "id": "TC-PERSIST-02",
+      "name": "Create Workspace & Relational Integrity",
+      "status": "passed",
+      "error": null
+    },
+    {
+      "id": "TC-PERSIST-03",
+      "name": "Vector Persistence (pgvector insert)",
+      "status": "passed",
+      "error": null
+    },
+    {
+      "id": "TC-PERSIST-04",
+      "name": "Cosine Similarity Vector Retrieval",
+      "status": "passed",
+      "error": null
+    },
+    {
+      "id": "TC-PERSIST-05",
+      "name": "Workspace Plan Persistence",
+      "status": "passed",
+      "error": null
+    },
+    {
+      "id": "TC-PERSIST-06",
+      "name": "Database Connection Outage & Fallback",
+      "status": "passed",
+      "error": null
+    },
+    {
+      "id": "TC-PERSIST-07",
+      "name": "Parameterized SQL Injection Immunity",
+      "status": "passed",
+      "error": null
+    },
+    {
+      "id": "TC-PERSIST-08",
+      "name": "Empty Query Vector Retrieval",
+      "status": "passed",
+      "error": null
+    },
+    {
+      "id": "TC-PERSIST-09",
+      "name": "Retention Limit Enforcement",
+      "status": "passed",
+      "error": null
+    },
+    {
+      "id": "TC-PERSIST-10",
+      "name": "Oversized Metadata Memory Write",
+      "status": "passed",
+      "error": null
+    },
+    {
+      "id": "TC-AUTH-01",
+      "name": "Valid Signed Cookie Session Access",
+      "status": "passed",
+      "error": null
+    },
+    {
+      "id": "TC-AUTH-02",
+      "name": "Valid Bearer API Key Authorization",
+      "status": "passed",
+      "error": null
+    },
+    {
+      "id": "TC-AUTH-03",
+      "name": "Role-Based Access Enforcement",
+      "status": "passed",
+      "error": null
+    },
+    {
+      "id": "TC-AUTH-04",
+      "name": "Multi-Tenant Data Isolation",
+      "status": "passed",
+      "error": null
+    },
+    {
+      "id": "TC-AUTH-05",
+      "name": "Cross-Origin Mutation Protection",
+      "status": "passed",
+      "error": null
+    },
+    {
+      "id": "TC-AUTH-06",
+      "name": "Tampered Session Cookie Signature",
+      "status": "passed",
+      "error": null
+    },
+    {
+      "id": "TC-AUTH-07",
+      "name": "Expired Session Cookie",
+      "status": "passed",
+      "error": null
+    },
+    {
+      "id": "TC-AUTH-08",
+      "name": "Revoked API Key Access Check",
+      "status": "passed",
+      "error": null
+    },
+    {
+      "id": "TC-AUTH-09",
+      "name": "Spoofed Tenant Header Bypass Prevention",
+      "status": "passed",
+      "error": null
+    },
+    {
+      "id": "TC-AUTH-10",
+      "name": "Malformed Authorization Header format",
+      "status": "passed",
+      "error": null
+    },
+    {
+      "id": "TC-INGEST-01",
+      "name": "Document Upload & Job Enqueue",
+      "status": "failed",
+      "error": "Expected 202 Accepted, got status 400, body {\"error\":\"Multipart form data required.\"}"
+    },
+    {
+      "id": "TC-INGEST-02",
+      "name": "PDF Text Extraction Processing",
+      "status": "failed",
+      "error": "Job ID or Workspace cookie not in context"
+    },
+    {
+      "id": "TC-INGEST-03",
+      "name": "Embedding Generation Call",
+      "status": "failed",
+      "error": "Job ID or Workspace cookie not in context"
+    },
+    {
+      "id": "TC-INGEST-04",
+      "name": "Vector Persistence on Ingestion",
+      "status": "passed",
+      "error": null
+    },
+    {
+      "id": "TC-INGEST-05",
+      "name": "SSE Real-time Progress Sequencing",
+      "status": "failed",
+      "error": "Job ID or Workspace cookie not in context"
+    },
+    {
+      "id": "TC-INGEST-06",
+      "name": "Corrupted or Zero-Byte PDF Upload",
+      "status": "passed",
+      "error": null
+    },
+    {
+      "id": "TC-INGEST-07",
+      "name": "Embedding Provider Outage & Retry",
+      "status": "failed",
+      "error": "Expected failure state or 202 trigger, got status 400"
+    },
+    {
+      "id": "TC-INGEST-08",
+      "name": "Concurrency Throttling & Ingestion Limit",
+      "status": "failed",
+      "error": "Unexpected status returned under concurrent load: 400, 400, 400, 400, 400, 400, 400, 400, 400, 400"
+    },
+    {
+      "id": "TC-INGEST-09",
+      "name": "Large File Chunk Boundary Splitting",
+      "status": "failed",
+      "error": "Upload failed for large document: status 400"
+    },
+    {
+      "id": "TC-INGEST-10",
+      "name": "SSE Connection Disconnect & Resume",
+      "status": "passed",
+      "error": null
+    },
+    {
+      "id": "TC-COMB-01",
+      "name": "Ingestion Upload Role Verification",
+      "status": "passed",
+      "error": null
+    },
+    {
+      "id": "TC-COMB-02",
+      "name": "Vector Query Tenant Isolation",
+      "status": "failed",
+      "error": "Isolation breach: Tenant B retrieved Tenant A's document vectors"
+    },
+    {
+      "id": "TC-COMB-03",
+      "name": "Ingestion State Check during Key Revocation",
+      "status": "passed",
+      "error": null
+    },
+    {
+      "id": "TC-COMB-04",
+      "name": "Workspace Deletion Data Cascading",
+      "status": "passed",
+      "error": null
+    },
+    {
+      "id": "TC-SCEN-01",
+      "name": "End-to-End Enterprise Ingestion and Search Pipeline",
+      "status": "failed",
+      "error": "PDF Ingestion upload rejected: status 400, body {\"error\":\"Multipart form data required.\"}"
+    },
+    {
+      "id": "TC-SCEN-02",
+      "name": "Multi-Tenant Data Leakage Attack Attempt",
+      "status": "passed",
+      "error": null
+    },
+    {
+      "id": "TC-SCEN-03",
+      "name": "System Recovery from Database and Provider Outages",
+      "status": "failed",
+      "error": "Ingestion upload rejected: status 400"
+    },
+    {
+      "id": "TC-SCEN-04",
+      "name": "API Key Lifecycle with Granular Roles",
+      "status": "passed",
+      "error": null
+    },
+    {
+      "id": "TC-SCEN-05",
+      "name": "High-Concurrency Stress and Throttling Scenario",
+      "status": "passed",
+      "error": null
+    }
+  ]
+}

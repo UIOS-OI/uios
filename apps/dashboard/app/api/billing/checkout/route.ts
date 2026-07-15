@@ -6,9 +6,9 @@ const priceByPlan: Record<string, string | undefined> = {
 };
 
 export async function POST(request: NextRequest) {
-  const authError = requireRole(request, ["owner", "admin"]); if (authError) return authError;
+  const authError = await requireRole(request, ["owner", "admin"]); if (authError) return authError;
   const originError = rejectCrossOriginMutation(request); if (originError) return originError;
-  const tenantId = resolveTenantId(request);
+  const tenantId = await resolveTenantId(request);
   const rate = checkRateLimit(tenantId, "billing-checkout");
   if (!rate.allowed) return Response.json({ error: "Billing checkout rate limit reached.", retryAfterSeconds: rate.retryAfterSeconds }, { status: 429, headers: { "Retry-After": String(rate.retryAfterSeconds) } });
   let body: { planId?: string; email?: string; successUrl?: string; cancelUrl?: string };

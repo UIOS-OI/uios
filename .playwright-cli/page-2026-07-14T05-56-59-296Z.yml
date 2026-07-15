@@ -1,0 +1,28 @@
+- generic [ref=e1]:
+  - main [ref=e2]:
+    - region "Interactive UIOS intelligence universe" [ref=e3]:
+      - generic:
+        - button "Return to the UIOS Intelligence Core" [ref=e7] [cursor=pointer]:
+          - generic [ref=e8]: UI
+          - text: S
+          - generic [ref=e10]: INTELLIGENCE UNIVERSE
+        - generic: LIVE FABRIC WORLD 003
+        - button "RESET VIEW ⌖" [ref=e11] [cursor=pointer]
+      - navigation "Intelligence universe locations" [ref=e64]:
+        - generic [ref=e65]: EXPLORE ZONES
+        - button "01UIOS CORE" [pressed] [ref=e12] [cursor=pointer]
+        - button "02ROUTER" [ref=e13] [cursor=pointer]
+        - button "03AEGIS" [ref=e14] [cursor=pointer]
+        - button "04MEMORY" [ref=e15] [cursor=pointer]
+        - button "05OPENAI" [ref=e16] [cursor=pointer]
+        - button "06ANTHROPIC" [ref=e17] [cursor=pointer]
+        - button "07GEMINI" [ref=e18] [cursor=pointer]
+        - button "08MISTRAL" [ref=e19] [cursor=pointer]
+      - generic [ref=e66]:
+        - generic [ref=e67]: SYSTEM SUN
+        - heading "Intelligence Core" [level=1] [ref=e69]
+        - paragraph [ref=e70]: The living center of the intelligence universe. Every route, memory, and policy boundary converges here.
+        - generic [ref=e71]: SELECT A NODE TO TRAVEL
+      - generic "Camera controls" [ref=e72]: DRAG ORBIT SCROLL ZOOM CLICK DISCOVER
+      - button "SOUND ON" [active] [pressed] [ref=e77] [cursor=pointer]
+  - alert [ref=e63]

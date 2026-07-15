@@ -5,10 +5,10 @@ import { checkAegis, checkRateLimit, estimateUnits, getPlanLimit, getUsage, reco
 export const runtime = "nodejs";
 
 export async function POST(request: NextRequest) {
-  const authError = rejectInvalidApiKey(request); if (authError) return authError;
+  const authError = await rejectInvalidApiKey(request); if (authError) return authError;
   const originError = rejectCrossOriginMutation(request); if (originError) return originError;
-  const roleError = requireRole(request, ["owner", "admin", "developer"]); if (roleError) return roleError;
-  const tenantId = resolveTenantId(request);
+  const roleError = await requireRole(request, ["owner", "admin", "developer"]); if (roleError) return roleError;
+  const tenantId = await resolveTenantId(request);
   const rate = checkRateLimit(tenantId, "agent");
   if (!rate.allowed) return Response.json({ error: "UIOS agent rate limit reached.", retryAfterSeconds: rate.retryAfterSeconds }, { status: 429, headers: { "Retry-After": String(rate.retryAfterSeconds), "X-UIOS-RateLimit": "exceeded" } });
   let body: { prompt?: string; system?: string; maxSteps?: number };
@@ -23,11 +23,11 @@ export async function POST(request: NextRequest) {
   let provider;
   try { provider = (await router.select({ messages, model: process.env.UIOS_DEFAULT_MODEL, strategy: "explicit" })).provider; } catch { return Response.json({ error: "UIOS could not select a model provider." }, { status: 503 }); }
   const units = estimateUnits(messages);
-  const limit = getPlanLimit(tenantId);
-  if (getUsage(tenantId).units + units > limit) return Response.json({ error: "UIOS usage limit reached." }, { status: 402 });
+  const limit = await getPlanLimit(tenantId);
+  if ((await getUsage(tenantId)).units + units > limit) return Response.json({ error: "UIOS usage limit reached." }, { status: 402 });
   const run = await agentEngine.run(provider, { prompt: body.prompt, system: body.system, maxSteps: body.maxSteps });
   if (run.status === "failed") run.error = "UIOS agent execution failed. Review the run audit for details.";
-  if (run.status !== "failed") recordUsage(tenantId, units);
-  analytics.track(tenantId, "agent.run", { status: run.status, steps: run.steps, toolCalls: run.toolCalls.length });
+  if (run.status !== "failed") await recordUsage(tenantId, units);
+  await analytics.track(tenantId, "agent.run", { status: run.status, steps: run.steps, toolCalls: run.toolCalls.length });
   return Response.json({ run });
 }

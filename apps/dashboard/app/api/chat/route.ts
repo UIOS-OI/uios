@@ -8,9 +8,9 @@ export const runtime = "nodejs";
 type ChatMessage = { role: "system" | "user" | "assistant"; content: string };
 
 export async function POST(request: NextRequest) {
-  const authError = rejectInvalidApiKey(request); if (authError) return authError;
+  const authError = await rejectInvalidApiKey(request); if (authError) return authError;
   const originError = rejectCrossOriginMutation(request); if (originError) return originError;
-  const roleError = requireRole(request, ["owner", "admin", "developer"]); if (roleError) return roleError;
+  const roleError = await requireRole(request, ["owner", "admin", "developer"]); if (roleError) return roleError;
   let body: { messages?: ChatMessage[]; model?: string };
   try {
     body = (await request.json()) as { messages?: ChatMessage[]; model?: string };
@@ -24,14 +24,14 @@ export async function POST(request: NextRequest) {
     return Response.json({ error: "Message content is invalid or too large." }, { status: 400 });
   }
 
-  const tenantId = resolveTenantId(request);
+  const tenantId = await resolveTenantId(request);
   const rate = checkRateLimit(tenantId);
   if (!rate.allowed) return Response.json({ error: "UIOS request rate limit reached.", retryAfterSeconds: rate.retryAfterSeconds }, { status: 429, headers: { "Retry-After": String(rate.retryAfterSeconds), "X-UIOS-RateLimit": "exceeded" } });
   const aegis = await checkAegis(messages, tenantId);
-  if (!aegis.allowed) { analytics.track(tenantId, "aegis.request.blocked", { reason: aegis.reason ?? "policy-blocked" }); return Response.json({ error: aegis.reason ?? "Aegis blocked this request." }, { status: 403, headers: { "X-UIOS-Security": "aegis-blocked" } }); }
+  if (!aegis.allowed) { await analytics.track(tenantId, "aegis.request.blocked", { reason: aegis.reason ?? "policy-blocked" }); return Response.json({ error: aegis.reason ?? "Aegis blocked this request." }, { status: 403, headers: { "X-UIOS-Security": "aegis-blocked" } }); }
   const units = estimateUnits(messages);
-  const planLimit = getPlanLimit(tenantId);
-  const currentUsage = getUsage(tenantId);
+  const planLimit = await getPlanLimit(tenantId);
+  const currentUsage = await getUsage(tenantId);
   if (currentUsage.units + units > planLimit) return Response.json({ error: "UIOS usage limit reached. Upgrade the workspace plan to continue." }, { status: 402, headers: { "X-UIOS-Usage-Units": String(currentUsage.units) } });
 
   const router = getModelRouter();
@@ -45,7 +45,7 @@ export async function POST(request: NextRequest) {
   try {
     selected = await router.select({ messages, model, strategy: (process.env.UIOS_ROUTING_STRATEGY as "fastest" | "balanced" | "explicit" | undefined) ?? "explicit" });
   } catch (error) {
-    analytics.track(tenantId, "model.request.failed", { requestId, reason: error instanceof Error ? error.message.slice(0, 120) : "provider-selection-failed" });
+    await analytics.track(tenantId, "model.request.failed", { requestId, reason: error instanceof Error ? error.message.slice(0, 120) : "provider-selection-failed" });
     return Response.json({ error: "UIOS could not select a healthy model provider." }, { status: 503, headers: { "X-UIOS-Request-Id": requestId } });
   }
   const provider = selected.provider;
@@ -58,14 +58,14 @@ export async function POST(request: NextRequest) {
     async start(controller) {
       try {
         for await (const chunk of iterator) {
-          if (!observed) { analytics.track(tenantId, "model.request.completed", { requestId, provider: provider.id, model: chunk.model, strategy: selected.decision.strategy, latencyMs: Date.now() - startedAt }); observed = true; }
-          if (!charged) { recordUsage(tenantId, units); charged = true; }
+          if (!observed) { await analytics.track(tenantId, "model.request.completed", { requestId, provider: provider.id, model: chunk.model, strategy: selected.decision.strategy, latencyMs: Date.now() - startedAt }); observed = true; }
+          if (!charged) { await recordUsage(tenantId, units); charged = true; }
           controller.enqueue(encoder.encode(`data: ${JSON.stringify({ id: chunk.id, model: chunk.model, choices: [{ delta: { content: chunk.content }, finish_reason: chunk.finishReason ?? null }] })}\n\n`));
         }
         controller.enqueue(encoder.encode("data: [DONE]\n\n"));
         controller.close();
       } catch (error) {
-        analytics.track(tenantId, "model.request.stream_failed", { requestId, reason: error instanceof Error ? error.message.slice(0, 120) : "provider-failed" });
+        await analytics.track(tenantId, "model.request.stream_failed", { requestId, reason: error instanceof Error ? error.message.slice(0, 120) : "provider-failed" });
         controller.enqueue(encoder.encode(`data: ${JSON.stringify({ error: "UIOS provider failed while streaming the response." })}\n\n`));
         controller.error(error);
       }

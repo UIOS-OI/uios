@@ -4,7 +4,9 @@ import { rejectUnauthorized, resolveTenantId } from "../../lib/runtime";
 
 export const runtime = "nodejs";
 
-export function GET(request: NextRequest) {
-  const authError = rejectUnauthorized(request); if (authError) return authError;
-  return Response.json({ tenantId: resolveTenantId(request), plugins: pluginRegistry.listManifests(), providers: pluginRegistry.listProviders() });
+export async function GET(request: NextRequest) {
+  const authError = await rejectUnauthorized(request); if (authError) return authError;
+  const tenantId = await resolveTenantId(request);
+  return Response.json({ tenantId, plugins: pluginRegistry.listManifests(), providers: pluginRegistry.listProviders() });
 }
+

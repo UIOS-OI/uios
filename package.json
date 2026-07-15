@@ -11,6 +11,7 @@
     "typecheck": "pnpm --filter @uios/dashboard typecheck",
     "smoke": "node scripts/smoke.mjs",
     "provider-smoke": "node scripts/provider-smoke.mjs",
+    "test:e2e": "node scripts/e2e-tests.mjs",
     "launch-audit": "node scripts/launch-audit.mjs",
     "security-scan": "node scripts/security-scan.mjs"
   }

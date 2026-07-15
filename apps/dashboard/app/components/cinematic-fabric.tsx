@@ -483,13 +483,26 @@ function CoreNode({ active, reducedMotion, onSelect }: { active: boolean; reduce
     return points;
   }, []);
 
-  useFrame(({ clock }, delta) => {
-    const time = clock.elapsedTime;
+  const mouse3D = useMemo(() => new THREE.Vector3(), []);
+  const normal = useMemo(() => new THREE.Vector3(), []);
+
+  useFrame((state, delta) => {
+    const time = state.clock.elapsedTime;
     const flicker = getIntroFlicker(time);
 
-    if (lightRef.current) lightRef.current.intensity = (active ? 34 : 25) * flicker;
-    if (matRef.current) matRef.current.emissiveIntensity = (active ? 3.5 : 2.8) * flicker;
-    if (innerMeshRef.current) innerMeshRef.current.scale.setScalar(flicker);
+    // Calculate mouse intersection in 3D (camera perpendicular plane)
+    state.camera.getWorldDirection(normal);
+    normal.negate();
+    const plane = new THREE.Plane(normal, 0);
+    state.raycaster.ray.intersectPlane(plane, mouse3D);
+
+    const nodePos = new THREE.Vector3(...node.position);
+    const dist = nodePos.distanceTo(mouse3D);
+    const influence = dist < 7.0 ? Math.max(0, 1 - dist / 7.0) : 0;
+
+    if (lightRef.current) lightRef.current.intensity = (active ? 34 : 25) * flicker + influence * 15;
+    if (matRef.current) matRef.current.emissiveIntensity = (active ? 3.5 : 2.8) * flicker + influence * 2.2;
+    if (innerMeshRef.current) innerMeshRef.current.scale.setScalar(flicker + influence * 0.15);
     if (fireMatRef.current) fireMatRef.current.opacity = 0.45 * flicker;
     if (fireOppMatRef.current) fireOppMatRef.current.opacity = 0.26 * flicker;
     if (coronaMatRef.current) coronaMatRef.current.opacity = 0.88 * flicker;
@@ -502,6 +515,10 @@ function CoreNode({ active, reducedMotion, onSelect }: { active: boolean; reduce
       shell.current.rotation.x = Math.sin(time * .2) * .08;
       const pulse = reducedMotion ? 1 : 1 + Math.sin(time * 1.5) * .04;
       shell.current.scale.setScalar(pulse * (hovered ? 1.08 : 1));
+
+      // Displace position toward cursor (bending network)
+      const displacement = new THREE.Vector3().subVectors(mouse3D, nodePos).normalize().multiplyScalar(influence * 0.95);
+      shell.current.position.copy(displacement);
     }
     if (fire.current && !reducedMotion) {
       fire.current.rotation.y -= delta * .15;
@@ -627,19 +644,36 @@ function IntelligenceNode({ node, active, reducedMotion, onSelect }: { node: Uni
   const [hovered, setHovered] = useState(false);
   const phase = useMemo(() => NODES.findIndex((item) => item.id === node.id) * .73, [node.id]);
 
-  useFrame(({ clock }, delta) => {
+  const mouse3D = useMemo(() => new THREE.Vector3(), []);
+  const normal = useMemo(() => new THREE.Vector3(), []);
+
+  useFrame((state, delta) => {
     if (!ref.current) return;
-    const time = clock.elapsedTime;
+    const time = state.clock.elapsedTime;
     const flicker = getIntroFlicker(time);
 
-    if (lightRef.current) lightRef.current.intensity = (active ? 5.5 : 2.6) * flicker;
-    if (matRef.current) matRef.current.emissiveIntensity = (active ? 2.4 : hovered ? 1.9 : 1.35) * flicker;
-    if (outerMatRef.current) outerMatRef.current.opacity = (active ? .95 : .55) * flicker;
-    if (detailsRef.current) detailsRef.current.scale.setScalar(flicker);
+    // Calculate mouse intersection in 3D (camera perpendicular plane)
+    state.camera.getWorldDirection(normal);
+    normal.negate();
+    const plane = new THREE.Plane(normal, 0);
+    state.raycaster.ray.intersectPlane(plane, mouse3D);
+
+    const nodePos = new THREE.Vector3(...node.position);
+    const dist = nodePos.distanceTo(mouse3D);
+    const influence = dist < 6.0 ? Math.max(0, 1 - dist / 6.0) : 0;
+
+    if (lightRef.current) lightRef.current.intensity = (active ? 5.5 : 2.6) * flicker + influence * 3.5;
+    if (matRef.current) matRef.current.emissiveIntensity = (active ? 2.4 : hovered ? 1.9 : 1.35) * flicker + influence * 1.6;
+    if (outerMatRef.current) outerMatRef.current.opacity = (active ? .95 : .55) * flicker + influence * 0.25;
+    if (detailsRef.current) detailsRef.current.scale.setScalar(flicker + influence * 0.12);
 
     if (!reducedMotion) ref.current.rotation.y += delta * (node.kind === "zone" ? .12 : .18);
     const pulse = reducedMotion ? 1 : 1 + Math.sin(time * 1.5 + phase) * .055;
     ref.current.scale.setScalar(pulse * (hovered || active ? 1.14 : 1));
+
+    // Displace position toward cursor (bending network)
+    const displacement = new THREE.Vector3().subVectors(mouse3D, nodePos).normalize().multiplyScalar(influence * 0.65);
+    ref.current.position.copy(displacement);
   });
 
   const select = (event: ThreeEvent<MouseEvent>) => { event.stopPropagation(); onSelect(node.id); };
@@ -858,12 +892,21 @@ function LivingNetwork({ reducedMotion }: { reducedMotion: boolean }) {
 
   useEffect(() => () => { web.blueGeometry.dispose(); web.purpleGeometry.dispose(); }, [web]);
   
-  useFrame(({ clock }) => {
-    const elapsed = clock.elapsedTime;
+  const mouse3D = useMemo(() => new THREE.Vector3(), []);
+  const normal = useMemo(() => new THREE.Vector3(), []);
+
+  useFrame((state) => {
+    const elapsed = state.clock.elapsedTime;
     const flicker = getIntroFlicker(elapsed);
     const blueEnergy = reducedMotion ? 0 : Math.sin(elapsed * .19) * .055 + Math.sin(elapsed * .071 + 2.1) * .035;
     const purpleEnergy = reducedMotion ? 0 : Math.sin(elapsed * .143 + 1.8) * .05 + Math.sin(elapsed * .053) * .04;
     
+    // Calculate mouse intersection in 3D (camera perpendicular plane)
+    state.camera.getWorldDirection(normal);
+    normal.negate();
+    const plane = new THREE.Plane(normal, 0);
+    state.raycaster.ray.intersectPlane(plane, mouse3D);
+
     if (blueLinesRef.current) {
       blueLinesRef.current.uniforms.uTime.value = elapsed;
       blueLinesRef.current.uniforms.uOpacity.value = (0.38 + blueEnergy) * flicker;
@@ -886,7 +929,12 @@ function LivingNetwork({ reducedMotion }: { reducedMotion: boolean }) {
         const progress = reducedMotion ? phase : (elapsed * speed + phase) % 1;
         const pulse = reducedMotion ? .7 : .18 + Math.pow(.5 + Math.sin(elapsed * shimmer + phase * Math.PI * 2) * .5, 3) * .82;
         position.copy(curve.getPointAt(progress));
-        scale.setScalar((.035 + Math.sin(progress * Math.PI) * .07) * size * pulse * flicker);
+        
+        // Proximity scaling
+        const dist = position.distanceTo(mouse3D);
+        const influence = dist < 5.0 ? Math.max(0, 1 - dist / 5.0) : 0;
+        
+        scale.setScalar((.035 + Math.sin(progress * Math.PI) * .07) * size * pulse * flicker * (1.0 + influence * 2.8));
         matrix.compose(position, quaternion, scale);
         pulseMesh.setMatrixAt(instanceIndex, matrix);
       }
@@ -929,7 +977,7 @@ function LivingNetwork({ reducedMotion }: { reducedMotion: boolean }) {
   </group>;
 }
 
-function CameraRig({ selected, focusVersion, reducedMotion }: { selected: NodeId; focusVersion: number; reducedMotion: boolean }) {
+function CameraRig({ selected, focusVersion, scrollY, reducedMotion }: { selected: NodeId; focusVersion: number; scrollY: number; reducedMotion: boolean }) {
   const { camera, gl } = useThree();
   const controls = useRef<ThreeOrbitControls | null>(null);
   const transition = useRef({ 
@@ -949,7 +997,7 @@ function CameraRig({ selected, focusVersion, reducedMotion }: { selected: NodeId
     nextControls.dampingFactor = .055;
     nextControls.enablePan = true;
     nextControls.minDistance = 3.2;
-    nextControls.maxDistance = 48;
+    nextControls.maxDistance = 64; // Increased max distance for galaxy zoom out
     nextControls.minPolarAngle = .16;
     nextControls.maxPolarAngle = Math.PI * .84;
     nextControls.target.set(0, 0, 0);
@@ -1040,6 +1088,24 @@ function CameraRig({ selected, focusVersion, reducedMotion }: { selected: NodeId
       
       currentControls.target.x += Math.sin(elapsed * 0.22) * 0.001;
       currentControls.target.y += Math.cos(elapsed * 0.18) * 0.001;
+
+      // Scroll depth flight & cosmic galaxy zoom-out
+      if (scrollY > 0) {
+        const maxScroll = typeof window !== "undefined" ? document.documentElement.scrollHeight - window.innerHeight : 2000;
+        const scrollFactor = Math.min(1.0, scrollY / (maxScroll || 2000));
+
+        if (scrollFactor < 0.5) {
+          const t = scrollFactor * 2; // 0 to 1
+          camera.position.z = camera.position.z * (1.0 - t * 0.5);
+          camera.position.y = camera.position.y * (1.0 - t * 0.3) - t * 3.5;
+        } else {
+          const t = (scrollFactor - 0.5) * 2; // 0 to 1
+          const zoomDistance = 15.5 + t * 45.0; // zoom out from 15.5 to 60+ distance
+          const dir = camera.position.clone().normalize();
+          camera.position.copy(dir.multiplyScalar(zoomDistance));
+          currentControls.target.set(0, t * 8.0, 0);
+        }
+      }
     }
     currentControls.update();
   });
@@ -1047,7 +1113,7 @@ function CameraRig({ selected, focusVersion, reducedMotion }: { selected: NodeId
   return null;
 }
 
-function UniverseScene({ selected, focusVersion, reducedMotion, onSelect }: { selected: NodeId; focusVersion: number; reducedMotion: boolean; onSelect: (id: NodeId) => void }) {
+function UniverseScene({ selected, focusVersion, scrollY, reducedMotion, onSelect }: { selected: NodeId; focusVersion: number; scrollY: number; reducedMotion: boolean; onSelect: (id: NodeId) => void }) {
   return <>
     <color attach="background" args={["#010207"]} />
     <fog attach="fog" args={["#010207", 18, 72]} />
@@ -1058,7 +1124,7 @@ function UniverseScene({ selected, focusVersion, reducedMotion, onSelect }: { se
     <CoreNode active={selected === "core"} reducedMotion={reducedMotion} onSelect={onSelect} />
     {NODES.filter((node) => node.id !== "core").map((node) => <IntelligenceNode key={node.id} node={node} active={selected === node.id} reducedMotion={reducedMotion} onSelect={onSelect} />)}
     {selected !== "core" ? <LocalNodeWorld key={selected} node={NODE_MAP.get(selected)!} reducedMotion={reducedMotion} /> : null}
-    <CameraRig selected={selected} focusVersion={focusVersion} reducedMotion={reducedMotion} />
+    <CameraRig selected={selected} focusVersion={focusVersion} scrollY={scrollY} reducedMotion={reducedMotion} />
     <EffectComposer multisampling={0}><Bloom intensity={1.02} luminanceThreshold={.24} luminanceSmoothing={.72} mipmapBlur /></EffectComposer>
   </>;
 }
@@ -1112,6 +1178,7 @@ export function IntelligenceUniverse() {
   const [reducedMotion, setReducedMotion] = useState(false);
   const [ready, setReady] = useState(false);
   const [muted, setMuted] = useState(true);
+  const [scrollY, setScrollY] = useState(0);
   const hudLockUntil = useRef(0);
   const node = NODE_MAP.get(selected)!;
 
@@ -1120,7 +1187,14 @@ export function IntelligenceUniverse() {
     const updateMotion = () => setReducedMotion(motion.matches);
     updateMotion();
     motion.addEventListener("change", updateMotion);
-    const timer = window.setTimeout(() => setReady(true), motion.matches ? 0 : 7800);
+    
+    // Intro sequence: 7.8 seconds
+    const timer = window.setTimeout(() => {
+      setReady(true);
+      // Dispatch completion event to fade in HTML landing details
+      window.dispatchEvent(new CustomEvent("uios:cinematic-complete"));
+    }, motion.matches ? 0 : 7800);
+
     return () => { 
       window.clearTimeout(timer); 
       motion.removeEventListener("change", updateMotion); 
@@ -1129,12 +1203,26 @@ export function IntelligenceUniverse() {
     };
   }, []);
 
+  // Synchronized chimes with flickering sparks
+  useEffect(() => {
+    if (muted) return;
+    const timers = [
+      window.setTimeout(() => uiosAudio.triggerChime(1), 2200),
+      window.setTimeout(() => uiosAudio.triggerChime(3), 2900),
+      window.setTimeout(() => uiosAudio.triggerChime(5), 4100),
+      window.setTimeout(() => uiosAudio.triggerChime(2), 4800),
+      window.setTimeout(() => uiosAudio.triggerChime(0), 5500),
+      window.setTimeout(() => uiosAudio.triggerChime(7), 6500),
+      window.setTimeout(() => uiosAudio.triggerChime(9), 7200),
+    ];
+    return () => timers.forEach(window.clearTimeout);
+  }, [muted]);
+
   const selectNode = useCallback((id: NodeId) => {
     document.body.style.cursor = "";
     setSelected(id);
     setFocusVersion((version) => version + 1);
     
-    // Play chime if audio is enabled
     const index = NODES.findIndex((item) => item.id === id);
     if (index !== -1 && !muted) {
       uiosAudio.triggerChime(index);
@@ -1162,10 +1250,36 @@ export function IntelligenceUniverse() {
     });
   }, []);
 
+  // Scroll tracking to auto-focus sections and direct camera fly-through
+  useEffect(() => {
+    const handleScroll = () => {
+      const sy = window.scrollY;
+      setScrollY(sy);
+      
+      const maxScroll = document.documentElement.scrollHeight - window.innerHeight;
+      if (maxScroll > 100) {
+        const pct = sy / maxScroll;
+        if (pct < 0.15) {
+          setSelected("core");
+        } else if (pct < 0.42) {
+          setSelected("router");
+        } else if (pct < 0.68) {
+          setSelected("memory");
+        } else if (pct < 0.88) {
+          setSelected("aegis");
+        } else {
+          setSelected("gemini");
+        }
+      }
+    };
+    window.addEventListener("scroll", handleScroll, { passive: true });
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
+
   return <section className={`intelligence-universe${ready ? " universe-ready" : ""}`} aria-label="Interactive UIOS intelligence universe">
     <CanvasErrorBoundary>
       <Canvas dpr={[1, 1.5]} camera={{ position: [0, 8, 40], fov: 48, near: .1, far: 120 }} gl={{ antialias: true, powerPreference: "high-performance" }}>
-        <Suspense fallback={null}><UniverseScene selected={selected} focusVersion={focusVersion} reducedMotion={reducedMotion} onSelect={selectSpatialNode} /></Suspense>
+        <Suspense fallback={null}><UniverseScene selected={selected} focusVersion={focusVersion} scrollY={scrollY} reducedMotion={reducedMotion} onSelect={selectSpatialNode} /></Suspense>
       </Canvas>
     </CanvasErrorBoundary>
 
@@ -1215,7 +1329,7 @@ export function IntelligenceUniverse() {
       <div className="intro-wordmark">
         <div className="intro-logo-mark"><span>UI</span><i /><span>S</span></div>
         <strong>THE FABRIC OF INTELLIGENCE</strong>
-        <small>INTELLIGENCE IS WAKING</small>
+        <small>THE FABRIC OF INTELLIGENCE</small>
       </div>
     </div>
   </section>;

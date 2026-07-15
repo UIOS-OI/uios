@@ -3,10 +3,13 @@ import { getPlanLimit, getUsage, getWorkspacePlan, listUsageEvents, rejectUnauth
 
 export const runtime = "nodejs";
 
-export function GET(request: NextRequest) {
-  const authError = rejectUnauthorized(request); if (authError) return authError;
-  const tenantId = resolveTenantId(request);
-  const planLimit = getPlanLimit(tenantId);
-  const state = getUsage(tenantId);
-  return Response.json({ tenantId, plan: getWorkspacePlan(tenantId), planLimit, ...state, remainingUnits: Math.max(0, planLimit - state.units), events: listUsageEvents(tenantId) });
+export async function GET(request: NextRequest) {
+  const authError = await rejectUnauthorized(request); if (authError) return authError;
+  const tenantId = await resolveTenantId(request);
+  const planLimit = await getPlanLimit(tenantId);
+  const state = await getUsage(tenantId);
+  const plan = await getWorkspacePlan(tenantId);
+  const events = await listUsageEvents(tenantId);
+  return Response.json({ tenantId, plan, planLimit, ...state, remainingUnits: Math.max(0, planLimit - state.units), events });
 }
+

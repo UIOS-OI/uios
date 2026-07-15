@@ -6,6 +6,7 @@ export type GatewayProviderOptions = {
   baseUrl: string;
   apiKey: string;
   defaultModel: string;
+  embeddingModel?: string;
   timeoutMs?: number;
 };
 
@@ -16,6 +17,7 @@ export class GatewayModelProvider implements ModelProvider {
   private readonly baseUrl: string;
   private readonly apiKey: string;
   private readonly defaultModel: string;
+  private readonly embeddingModel: string;
   private readonly timeoutMs: number;
 
   constructor(options: GatewayProviderOptions) {
@@ -23,6 +25,7 @@ export class GatewayModelProvider implements ModelProvider {
     this.baseUrl = options.baseUrl.replace(/\/$/, "");
     this.apiKey = options.apiKey;
     this.defaultModel = options.defaultModel;
+    this.embeddingModel = options.embeddingModel ?? "text-embedding-3-small";
     this.timeoutMs = options.timeoutMs ?? 30_000;
   }
 
@@ -65,7 +68,7 @@ export class GatewayModelProvider implements ModelProvider {
     const response = await fetch(`${this.baseUrl}/embeddings`, {
       method: "POST",
       headers: { Authorization: `Bearer ${this.apiKey}`, "Content-Type": "application/json", "X-UIOS-Provider": this.id },
-      body: JSON.stringify({ input: inputs, model: this.defaultModel }),
+      body: JSON.stringify({ model: this.embeddingModel, input: inputs }),
       cache: "no-store",
       signal: AbortSignal.timeout(this.timeoutMs),
     });
@@ -76,7 +79,10 @@ export class GatewayModelProvider implements ModelProvider {
   }
 
   async listModels(): Promise<ModelDescriptor[]> {
-    return [{ id: this.defaultModel, provider: this.id, capabilities: ["chat", "stream", "tools", "embed"] }];
+    return [
+      { id: this.defaultModel, provider: this.id, capabilities: ["chat", "stream", "tools"] },
+      { id: this.embeddingModel, provider: this.id, capabilities: ["embed"] },
+    ];
   }
 
   async health(): Promise<ProviderHealth> {

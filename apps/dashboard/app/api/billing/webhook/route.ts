@@ -22,7 +22,7 @@ export async function POST(request: Request) {
   try { event = JSON.parse(payload) as typeof event; } catch { return Response.json({ error: "Stripe payload must be valid JSON." }, { status: 400 }); }
   const metadata = event.data?.object?.metadata ?? {};
   const workspaceId = metadata.uios_workspace_id;
-  if (workspaceId && event.type === "checkout.session.completed") updateWorkspacePlan(workspaceId, metadata.uios_plan === "enterprise" ? "enterprise" : "scale");
-  if (workspaceId && event.type === "customer.subscription.deleted") updateWorkspacePlan(workspaceId, "builder");
+  if (workspaceId && event.type === "checkout.session.completed") await updateWorkspacePlan(workspaceId, metadata.uios_plan === "enterprise" ? "enterprise" : "scale");
+  if (workspaceId && event.type === "customer.subscription.deleted") await updateWorkspacePlan(workspaceId, "builder");
   return Response.json({ received: true });
 }
