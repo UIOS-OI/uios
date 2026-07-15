@@ -1,0 +1,64 @@
+.page {
+  background: #000108;
+  color: #eef2ff;
+  height: 100svh;
+  overflow: hidden;
+  position: relative;
+}
+
+.canvas {
+  inset: 0;
+  position: absolute !important;
+}
+
+.header {
+  align-items: center;
+  display: flex;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 9px;
+  justify-content: space-between;
+  left: clamp(20px, 4vw, 58px);
+  letter-spacing: .16em;
+  pointer-events: none;
+  position: absolute;
+  right: clamp(20px, 4vw, 58px);
+  top: 28px;
+}
+
+.header span:last-child {
+  color: #93a5ff;
+}
+
+.intro {
+  bottom: clamp(28px, 7vh, 78px);
+  left: clamp(20px, 5vw, 72px);
+  pointer-events: none;
+  position: absolute;
+}
+
+.intro p,
+.intro small {
+  color: #8994c2;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 9px;
+  letter-spacing: .17em;
+}
+
+.intro h1 {
+  color: #f4f6ff;
+  font-size: clamp(42px, 7vw, 88px);
+  font-weight: 300;
+  letter-spacing: -.07em;
+  line-height: .83;
+  margin: 14px 0 20px;
+  text-shadow: 0 0 50px rgba(105, 118, 255, .32);
+}
+
+@media (max-width: 600px) {
+  .header span:last-child { display: none; }
+  .intro h1 { font-size: 48px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .header, .intro { transition: none; }
+}

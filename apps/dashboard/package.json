@@ -9,6 +9,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@react-three/drei": "^10.7.7",
     "@react-three/fiber": "^9.6.1",
     "@react-three/postprocessing": "^3.0.4",
     "@uios/agent-engine": "workspace:*",
@@ -18,6 +19,7 @@
     "@uios/memory": "workspace:*",
     "@uios/plugin-registry": "workspace:*",
     "@uios/router": "workspace:*",
+    "@uios/render-engine": "workspace:*",
     "@uios/workflow-engine": "workspace:*",
     "ai": "^7.0.22",
     "bullmq": "^5.0.0",

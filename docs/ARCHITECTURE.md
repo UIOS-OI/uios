@@ -35,3 +35,9 @@ The service packages under `services/` and shared contracts under `packages/` ar
 ## Sprint 002 landing composition
 
 The homepage composes two independent client layers: `CinematicFabric` owns the fixed React Three Fiber scene and emits a completion event, while `ProductLanding` owns the post-cinematic copy, capability cards, and waitlist. This avoids tearing down the GPU scene during the transition. Scroll progress is held in refs and consumed by the render loop; cards use CSS transforms rather than React state. The prototype waitlist is intentionally local-only (`uios.waitlist.v1` in browser storage) and can later be replaced by an API adapter without changing the form contract.
+
+## Render engine package
+
+`packages/render-engine` is a presentation-only React Three Fiber package. `SceneManager`, `CameraManager`, and `RenderLoop` own canvas setup, camera controls, adaptive DPR, and one centralized frame dispatcher. Particle, neural-network, crystal-core, interaction, region, and lighting systems are independently mountable components. Crystal, energy, pulse, and background shaders are exported as standalone GLSL modules.
+
+The package contains no product, tenant, provider, or dashboard logic. The isolated `/render-engine` route is a visual integration harness and does not replace the existing Fabric of Intelligence landing renderer. Its 60 FPS strategy is bounded DPR, adaptive quality, memoized GPU buffers, low draw-call counts, and uniform/transform mutation without per-frame React state.
