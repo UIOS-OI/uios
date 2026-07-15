@@ -227,7 +227,7 @@ type UniverseNode = {
 };
 
 const NODES: readonly UniverseNode[] = [
-  { id: "core", title: "Mycelium Core", shortTitle: "MYCELIUM CORE", category: "MYCELIAL ROOT", description: "The living, organic neural mycelium of UIOS. Orchestrates real-time model routing, memory cache sharing, and secure policy boundaries across the entire distributed intelligence ecosystem.", color: "#00f0ff", position: [0, 0, 0], radius: 3.3, kind: "core" },
+  { id: "core", title: "Intelligence Core", shortTitle: "UIOS CORE", category: "SYSTEM SUN", description: "The living center of the intelligence universe. Every route, memory, and policy boundary converges here.", color: "#ffc52f", position: [0, 0, 0], radius: 3.3, kind: "core" },
   { id: "router", title: "Universal Router", shortTitle: "ROUTER", category: "ROUTER ZONE", description: "Intent moves through this zone toward the right model, agent, tool, or workflow.", color: "#3c9dff", position: [0, 10, -13], radius: .62, kind: "zone" },
   { id: "aegis", title: "Aegis Security", shortTitle: "AEGIS", category: "SECURITY ZONE", description: "The policy boundary surrounding every intelligence path, approval, and protected action.", color: "#25c8ff", position: [-13, -3.6, -9], radius: .66, kind: "zone" },
   { id: "memory", title: "Shared Memory", shortTitle: "MEMORY", category: "MEMORY ZONE", description: "A connected context field that keeps intelligence coherent across models, agents, and workflows.", color: "#a855f7", position: [13.5, -3.1, -10], radius: .66, kind: "zone" },
@@ -453,95 +453,34 @@ function GalaxyField({ node, active, reducedMotion }: { node: UniverseNode; acti
 
 function CoreNode({ active, reducedMotion, onSelect, onHover }: { active: boolean; reducedMotion: boolean; onSelect: (id: NodeId) => void; onHover: (id: NodeId | null) => void }) {
   const shell = useRef<THREE.Group>(null);
+  const fire = useRef<THREE.Group>(null);
+  const fireOpposite = useRef<THREE.Group>(null);
   const rings = useRef<THREE.Group>(null);
   const lightRef = useRef<THREE.PointLight>(null);
-  
   const matRef = useRef<THREE.MeshPhysicalMaterial>(null);
-  const edgeMatRef = useRef<THREE.MeshBasicMaterial>(null);
-  const dodecaRef = useRef<THREE.Mesh>(null);
-  const octaRef = useRef<THREE.Mesh>(null);
-  const innerIcosaRef = useRef<THREE.Mesh>(null);
-  
-  const dodecaMatRef = useRef<THREE.MeshPhysicalMaterial>(null);
-  const octaMatRef = useRef<THREE.MeshBasicMaterial>(null);
-  const innerIcosaMatRef = useRef<THREE.MeshPhysicalMaterial>(null);
-  const spinesMatRef = useRef<THREE.LineBasicMaterial>(null);
-  const spineTipsMatRef = useRef<THREE.PointsMaterial>(null);
-  const pointsMatRef = useRef<THREE.PointsMaterial>(null);
-  
-  const shellGeomRef = useRef<THREE.BufferGeometry>(null);
-  const edgeGeomRef = useRef<THREE.BufferGeometry>(null);
-  const spinesGeomRef = useRef<THREE.BufferGeometry>(null);
-  const spineTipsGeomRef = useRef<THREE.BufferGeometry>(null);
-  const pointsGeomRef = useRef<THREE.BufferGeometry>(null);
+  const innerMeshRef = useRef<THREE.Mesh>(null);
+  const fireMatRef = useRef<THREE.MeshBasicMaterial>(null);
+  const fireOppMatRef = useRef<THREE.MeshBasicMaterial>(null);
+  const coronaMatRef = useRef<THREE.PointsMaterial>(null);
+  const ring1MatRef = useRef<THREE.MeshBasicMaterial>(null);
+  const ring2MatRef = useRef<THREE.MeshBasicMaterial>(null);
+  const ring3MatRef = useRef<THREE.MeshBasicMaterial>(null);
 
-  const originalShellPositions = useRef<Float32Array | null>(null);
-  const originalEdgePositions = useRef<Float32Array | null>(null);
-  
   const [hovered, setHovered] = useState(false);
   const node = NODE_MAP.get("core")!;
 
-  const { spinesGeom, originalSpines } = useMemo(() => {
-    const geom = new THREE.BufferGeometry();
-    const positions = new Float32Array(12 * 2 * 3);
-    const outer = new THREE.IcosahedronGeometry(3.3, 0);
-    const outerPos = outer.attributes.position;
-    for (let i = 0; i < 12; i++) {
-      const x = outerPos.getX(i);
-      const y = outerPos.getY(i);
-      const z = outerPos.getZ(i);
-      positions[i * 6] = x;
-      positions[i * 6 + 1] = y;
-      positions[i * 6 + 2] = z;
-      positions[i * 6 + 3] = x * 1.4;
-      positions[i * 6 + 4] = y * 1.4;
-      positions[i * 6 + 5] = z * 1.4;
+  const corona = useMemo(() => {
+    const random = seededRandom(0x94f11);
+    const radius = 3.65; // Scaled up (ginormous!)
+    const points = new Float32Array(340 * 3);
+    for (let index = 0; index < 340; index += 1) {
+      const theta = random() * Math.PI * 2;
+      const phi = Math.acos(2 * random() - 1);
+      points[index * 3] = radius * Math.sin(phi) * Math.cos(theta);
+      points[index * 3 + 1] = radius * Math.cos(phi);
+      points[index * 3 + 2] = radius * Math.sin(phi) * Math.sin(theta);
     }
-    geom.setAttribute("position", new THREE.BufferAttribute(positions, 3));
-    return { spinesGeom: geom, originalSpines: positions.slice() };
-  }, []);
-
-  const tipsGeom = useMemo(() => {
-    const geom = new THREE.BufferGeometry();
-    const positions = new Float32Array(12 * 3);
-    geom.setAttribute("position", new THREE.BufferAttribute(positions, 3));
-    return geom;
-  }, []);
-
-  const gyroidParticles = useMemo(() => {
-    const count = 220;
-    const positions = new Float32Array(count * 3);
-    const original = new Float32Array(count * 3);
-    for (let i = 0; i < count; i++) {
-      const theta = Math.random() * Math.PI * 2;
-      const phi = Math.acos(2.0 * Math.random() - 1.0);
-      const r = Math.pow(Math.random(), 1 / 3) * 2.5;
-      const x = r * Math.sin(phi) * Math.cos(theta);
-      const y = r * Math.sin(phi) * Math.sin(theta);
-      const z = r * Math.cos(phi);
-      positions[i * 3] = x;
-      positions[i * 3 + 1] = y;
-      positions[i * 3 + 2] = z;
-      original[i * 3] = x;
-      original[i * 3 + 1] = y;
-      original[i * 3 + 2] = z;
-    }
-    return { positions, original };
-  }, []);
-
-  const pointsGeom = useMemo(() => {
-    const geom = new THREE.BufferGeometry();
-    geom.setAttribute("position", new THREE.BufferAttribute(gyroidParticles.positions, 3));
-    return geom;
-  }, [gyroidParticles]);
-
-  const initGeometries = useCallback(() => {
-    if (shellGeomRef.current && !originalShellPositions.current) {
-      originalShellPositions.current = shellGeomRef.current.attributes.position.array.slice() as Float32Array;
-    }
-    if (edgeGeomRef.current && !originalEdgePositions.current) {
-      originalEdgePositions.current = edgeGeomRef.current.attributes.position.array.slice() as Float32Array;
-    }
+    return points;
   }, []);
 
   const mouse3D = useMemo(() => new THREE.Vector3(), []);
@@ -550,8 +489,6 @@ function CoreNode({ active, reducedMotion, onSelect, onHover }: { active: boolea
   useFrame((state, delta) => {
     const time = state.clock.elapsedTime;
     const flicker = getIntroFlicker(time);
-
-    initGeometries();
 
     // Calculate mouse intersection in 3D (camera perpendicular plane)
     state.camera.getWorldDirection(normal);
@@ -563,177 +500,37 @@ function CoreNode({ active, reducedMotion, onSelect, onHover }: { active: boolea
     const dist = nodePos.distanceTo(mouse3D);
     const influence = dist < 7.0 ? Math.max(0, 1 - dist / 7.0) : 0;
 
-    if (lightRef.current) lightRef.current.intensity = (active ? 38 : 28) * flicker + influence * 15;
-    
-    if (matRef.current) matRef.current.opacity = 0.72 * flicker;
-    if (edgeMatRef.current) edgeMatRef.current.opacity = 0.5 * flicker;
-    if (dodecaMatRef.current) dodecaMatRef.current.opacity = 0.6 * flicker;
-    if (octaMatRef.current) octaMatRef.current.opacity = 0.3 * flicker;
-    if (innerIcosaMatRef.current) innerIcosaMatRef.current.opacity = 0.85 * flicker;
-    if (spinesMatRef.current) spinesMatRef.current.opacity = 0.55 * flicker;
-    if (spineTipsMatRef.current) spineTipsMatRef.current.opacity = 0.92 * flicker;
-    if (pointsMatRef.current) pointsMatRef.current.opacity = 0.82 * flicker;
-
-    // Organic Crystal Deformation (Rebuilding vertices organically)
-    if (shellGeomRef.current && originalShellPositions.current && !reducedMotion) {
-      const geom = shellGeomRef.current;
-      const pos = geom.attributes.position;
-      if (pos && pos.array) {
-        const orig = originalShellPositions.current;
-        for (let i = 0; i < pos.count; i++) {
-          const ox = orig[i * 3];
-          const oy = orig[i * 3 + 1];
-          const oz = orig[i * 3 + 2];
-
-          const wave = Math.sin(time * 1.6 + ox * 1.5 + oy * 1.1) * 0.15 + Math.cos(time * 0.9 + oz * 1.4) * 0.06;
-          const waveY = Math.cos(time * 1.3 + oy * 1.8 + oz * 0.9) * 0.15 + Math.sin(time * 0.8 + ox * 1.2) * 0.06;
-          const waveZ = Math.sin(time * 1.9 + oz * 1.3 + ox * 1.9) * 0.15 + Math.cos(time * 1.1 + oy * 1.5) * 0.06;
-
-          pos.setXYZ(i, ox + wave, oy + waveY, oz + waveZ);
-        }
-        pos.needsUpdate = true;
-        geom.computeVertexNormals();
-      }
-    }
-
-    // Organic Edge Deformation (Sync wireframe outline)
-    if (edgeGeomRef.current && originalEdgePositions.current && !reducedMotion) {
-      const geom = edgeGeomRef.current;
-      const pos = geom.attributes.position;
-      if (pos && pos.array) {
-        const orig = originalEdgePositions.current;
-        for (let i = 0; i < pos.count; i++) {
-          const ox = orig[i * 3];
-          const oy = orig[i * 3 + 1];
-          const oz = orig[i * 3 + 2];
-
-          const wave = Math.sin(time * 1.6 + ox * 1.5 + oy * 1.1) * 0.15 + Math.cos(time * 0.9 + oz * 1.4) * 0.06;
-          const waveY = Math.cos(time * 1.3 + oy * 1.8 + oz * 0.9) * 0.15 + Math.sin(time * 0.8 + ox * 1.2) * 0.06;
-          const waveZ = Math.sin(time * 1.9 + oz * 1.3 + ox * 1.9) * 0.15 + Math.cos(time * 1.1 + oy * 1.5) * 0.06;
-
-          const scale = 1.002;
-          pos.setXYZ(i, (ox + wave) * scale, (oy + waveY) * scale, (oz + waveZ) * scale);
-        }
-        pos.needsUpdate = true;
-      }
-    }
-
-    // Radiolarian Spines (bases track morphed shell, tips breathe)
-    if (spinesGeomRef.current && originalShellPositions.current && !reducedMotion) {
-      const geom = spinesGeomRef.current;
-      const pos = geom.attributes.position;
-      if (pos && pos.array) {
-        const arr = pos.array as Float32Array;
-        const shellPos = shellGeomRef.current?.attributes.position.array as Float32Array;
-
-        if (shellPos) {
-          for (let i = 0; i < 12; i++) {
-            const x = shellPos[i * 3];
-            const y = shellPos[i * 3 + 1];
-            const z = shellPos[i * 3 + 2];
-
-            arr[i * 6] = x;
-            arr[i * 6 + 1] = y;
-            arr[i * 6 + 2] = z;
-
-            const spineScale = 1.35 + Math.sin(time * 2.2 + i) * 0.18;
-            arr[i * 6 + 3] = x * spineScale;
-            arr[i * 6 + 4] = y * spineScale;
-            arr[i * 6 + 5] = z * spineScale;
-          }
-          pos.needsUpdate = true;
-        }
-      }
-    }
-
-    // Radiolarian Spine Tips Synapses
-    if (spineTipsGeomRef.current && shellGeomRef.current && !reducedMotion) {
-      const geom = spineTipsGeomRef.current;
-      const pos = geom.attributes.position;
-      if (pos && pos.array) {
-        const arr = pos.array as Float32Array;
-        const shellPos = shellGeomRef.current.attributes.position.array as Float32Array;
-        for (let i = 0; i < 12; i++) {
-          const x = shellPos[i * 3];
-          const y = shellPos[i * 3 + 1];
-          const z = shellPos[i * 3 + 2];
-          const spineScale = 1.35 + Math.sin(time * 2.2 + i) * 0.18;
-          arr[i * 3] = x * spineScale;
-          arr[i * 3 + 1] = y * spineScale;
-          arr[i * 3 + 2] = z * spineScale;
-        }
-        pos.needsUpdate = true;
-      }
-    }
-
-    // Gyroid vector field flow drift
-    if (pointsGeomRef.current && !reducedMotion) {
-      const geom = pointsGeomRef.current;
-      const pos = geom.attributes.position;
-      if (pos && pos.array) {
-        const arr = pos.array as Float32Array;
-        const orig = gyroidParticles.original;
-        
-        for (let i = 0; i < pos.count; i++) {
-          let x = arr[i * 3];
-          let y = arr[i * 3 + 1];
-          let z = arr[i * 3 + 2];
-
-          const sx = x * 2.2;
-          const sy = y * 2.2;
-          const sz = z * 2.2;
-          
-          const gx = Math.cos(sx) * Math.sin(sy) - Math.sin(sx) * Math.cos(sz);
-          const gy = Math.cos(sy) * Math.sin(sz) - Math.sin(sy) * Math.cos(sx);
-          const gz = Math.cos(sz) * Math.sin(sx) - Math.sin(sz) * Math.cos(sy);
-
-          x += gx * delta * 1.5;
-          y += gy * delta * 1.5;
-          z += gz * delta * 1.5;
-
-          const distSq = x * x + y * y + z * z;
-          if (distSq > 7.29) {
-            x = orig[i * 3];
-            y = orig[i * 3 + 1];
-            z = orig[i * 3 + 2];
-          }
-
-          arr[i * 3] = x;
-          arr[i * 3 + 1] = y;
-          arr[i * 3 + 2] = z;
-        }
-        pos.needsUpdate = true;
-      }
-    }
-
-    // Rotate internal cages in opposite directions (quasicrystal order)
-    if (dodecaRef.current && !reducedMotion) {
-      dodecaRef.current.rotation.y += delta * 0.22;
-      dodecaRef.current.rotation.x -= delta * 0.08;
-    }
-    if (octaRef.current && !reducedMotion) {
-      octaRef.current.rotation.z += delta * 0.18;
-      octaRef.current.rotation.y -= delta * 0.15;
-    }
-    if (innerIcosaRef.current && !reducedMotion) {
-      innerIcosaRef.current.rotation.y -= delta * 0.32;
-      innerIcosaRef.current.rotation.z += delta * 0.12;
-    }
+    if (lightRef.current) lightRef.current.intensity = (active ? 34 : 25) * flicker + influence * 15;
+    if (matRef.current) matRef.current.emissiveIntensity = (active ? 3.5 : 2.8) * flicker + influence * 2.2;
+    if (innerMeshRef.current) innerMeshRef.current.scale.setScalar(flicker + influence * 0.15);
+    if (fireMatRef.current) fireMatRef.current.opacity = 0.45 * flicker;
+    if (fireOppMatRef.current) fireOppMatRef.current.opacity = 0.26 * flicker;
+    if (coronaMatRef.current) coronaMatRef.current.opacity = 0.88 * flicker;
+    if (ring1MatRef.current) ring1MatRef.current.opacity = 0.46 * flicker;
+    if (ring2MatRef.current) ring2MatRef.current.opacity = 0.25 * flicker;
+    if (ring3MatRef.current) ring3MatRef.current.opacity = 0.18 * flicker;
 
     if (shell.current) {
-      shell.current.rotation.y += reducedMotion ? 0 : delta * 0.08;
-      shell.current.rotation.x = Math.sin(time * 0.2) * 0.05;
-      
-      const pulse = reducedMotion ? 1 : 1 + Math.sin(time * 1.2) * 0.035;
+      shell.current.rotation.y += reducedMotion ? 0 : delta * .09;
+      shell.current.rotation.x = Math.sin(time * .2) * .08;
+      const pulse = reducedMotion ? 1 : 1 + Math.sin(time * 1.5) * .04;
       shell.current.scale.setScalar(pulse * (hovered ? 1.08 : 1));
 
-      const displacement = new THREE.Vector3().subVectors(mouse3D, nodePos).normalize().multiplyScalar(influence * 0.88);
+      // Displace position toward cursor (bending network)
+      const displacement = new THREE.Vector3().subVectors(mouse3D, nodePos).normalize().multiplyScalar(influence * 0.95);
       shell.current.position.copy(displacement);
     }
-
+    if (fire.current && !reducedMotion) {
+      fire.current.rotation.y -= delta * .15;
+      fire.current.rotation.z += delta * .04;
+    }
+    if (fireOpposite.current && !reducedMotion) {
+      fireOpposite.current.rotation.y += delta * .12;
+      fireOpposite.current.rotation.x -= delta * .04;
+    }
     if (rings.current && !reducedMotion) {
-      rings.current.rotation.z -= delta * 0.04;
-      rings.current.rotation.y += delta * 0.02;
+      rings.current.rotation.z -= delta * .06;
+      rings.current.rotation.y += delta * .03;
     }
   });
 
@@ -745,109 +542,33 @@ function CoreNode({ active, reducedMotion, onSelect, onHover }: { active: boolea
 
   return <group position={node.position}>
     <group ref={shell} onClick={select} onDoubleClick={handleDoubleClick} onPointerEnter={(event) => { event.stopPropagation(); setHovered(true); document.body.style.cursor = "pointer"; onHover("core"); }} onPointerLeave={() => { setHovered(false); document.body.style.cursor = ""; onHover(null); }}>
-      <pointLight ref={lightRef} color="#00f0ff" intensity={active ? 38 : 28} distance={35} decay={1.5} />
+      <pointLight ref={lightRef} color="#ffb21c" intensity={active ? 34 : 25} distance={35} decay={1.5} />
       
-      {/* 1. Outer Evolving Glass Crystal Facets (Solid Faceted Diamond Core) */}
-      <mesh>
-        <icosahedronGeometry ref={shellGeomRef} args={[3.3, 0]} />
-        <meshPhysicalMaterial 
-          ref={matRef} 
-          color="#00182b" 
-          emissive="#00b8e6"
-          emissiveIntensity={2.6}
-          roughness={0.06}
-          metalness={0.96}
-          clearcoat={1.0}
-          clearcoatRoughness={0.05}
-          transparent={true}
-          opacity={0.88}
-          flatShading={true}
-          depthWrite={true}
-        />
-      </mesh>
-
-      {/* 2. Outer Crystalline Wireframe Edges (Cyan Facet Outline) */}
-      <mesh>
-        <icosahedronGeometry ref={edgeGeomRef} args={[3.307, 0]} />
-        <meshBasicMaterial 
-          ref={edgeMatRef}
-          color="#00ffff" 
-          wireframe={true}
-          transparent={true}
-          opacity={0.5}
-          blending={THREE.AdditiveBlending}
-        />
-      </mesh>
-
-      {/* 3. Radiolarian Spines (radial lines extending from wobbly vertices) */}
-      <lineSegments>
-        <primitive ref={spinesGeomRef} object={spinesGeom} attach="geometry" />
-        <lineBasicMaterial ref={spinesMatRef} color="#00ffff" transparent={true} opacity={0.55} depthWrite={false} blending={THREE.AdditiveBlending} />
-      </lineSegments>
-
-      {/* 4. Radiolarian Spine Tip Synapses (Glowing nodes at the tips) */}
-      <points>
-        <primitive ref={spineTipsGeomRef} object={tipsGeom} attach="geometry" />
-        <pointsMaterial ref={spineTipsMatRef} color="#ffffff" size={0.32} sizeAttenuation={true} transparent={true} opacity={0.92} depthWrite={false} blending={THREE.AdditiveBlending} />
-      </points>
-
-      {/* 5. Nested Rotating Quasicrystal Cages (Solid glowing gears) */}
-      <mesh ref={dodecaRef}>
-        <dodecahedronGeometry args={[2.4, 0]} />
-        <meshPhysicalMaterial 
-          ref={dodecaMatRef} 
-          color="#0f0022" 
-          emissive="#6700e6"
-          emissiveIntensity={3.2}
-          roughness={0.08}
-          metalness={0.9}
-          transparent 
-          opacity={0.85} 
-          flatShading={true}
-          wireframe={false} 
-        />
-      </mesh>
+      {/* Inner Core Dodecahedron */}
+      <mesh ref={innerMeshRef}><dodecahedronGeometry args={[2.1, 0]} /><meshBasicMaterial color="#ffffff" toneMapped={false} /></mesh>
       
-      <mesh ref={octaRef}>
-        <octahedronGeometry args={[1.8, 0]} />
-        <meshBasicMaterial 
-          ref={octaMatRef} 
-          color="#00ffff" 
-          wireframe 
-          transparent 
-          opacity={0.4} 
-          blending={THREE.AdditiveBlending} 
-        />
-      </mesh>
-
-      <mesh ref={innerIcosaRef}>
-        <icosahedronGeometry args={[1.1, 0]} />
-        <meshPhysicalMaterial 
-          ref={innerIcosaMatRef} 
-          color="#001e1e" 
-          emissive="#00ffff"
-          emissiveIntensity={4.8}
-          roughness={0.04}
-          metalness={0.98}
-          transparent 
-          opacity={0.95} 
-          flatShading={true}
-          wireframe={false} 
-        />
-      </mesh>
-
-      {/* 6. Gyroid Synaptic Swarm (Drifting internal energy paths) */}
-      <points>
-        <primitive ref={pointsGeomRef} object={pointsGeom} attach="geometry" />
-        <pointsMaterial ref={pointsMatRef} color="#00ffff" size={0.065} sizeAttenuation={true} transparent={true} opacity={0.82} depthWrite={false} blending={THREE.AdditiveBlending} />
-      </points>
+      {/* Refractive Middle Glass Gem */}
+      <mesh><icosahedronGeometry args={[3.3, 1]} /><meshPhysicalMaterial ref={matRef} color="#ff9d00" emissive="#ffb000" emissiveIntensity={active ? 3.5 : 2.8} roughness={0.12} metalness={0.15} transmission={0.7} thickness={1.5} flatShading={true} toneMapped={false} /></mesh>
+      
+      {/* Outer Gyroscope */}
+      <group ref={fire}>
+        <mesh><icosahedronGeometry args={[3.6, 3]} /><meshBasicMaterial ref={fireMatRef} color="#ffd84a" wireframe transparent opacity={.45} blending={THREE.AdditiveBlending} toneMapped={false} /></mesh>
+        <points>
+          <bufferGeometry><bufferAttribute attach="attributes-position" args={[corona, 3]} /></bufferGeometry>
+          <pointsMaterial ref={coronaMatRef} color="#ffcf40" size={.11} sizeAttenuation transparent opacity={.88} depthWrite={false} blending={THREE.AdditiveBlending} toneMapped={false} />
+        </points>
+      </group>
+      <group ref={fireOpposite}>
+        <mesh><icosahedronGeometry args={[3.9, 2]} /><meshBasicMaterial ref={fireOppMatRef} color="#ff5b0a" wireframe transparent opacity={.26} blending={THREE.AdditiveBlending} toneMapped={false} /></mesh>
+      </group>
     </group>
     
     <group ref={rings}>
-      <mesh rotation={[Math.PI / 2, 0, 0]}><torusGeometry args={[4.5, .012, 6, 120]} /><meshBasicMaterial color="#00f0ff" transparent opacity={0.3} blending={THREE.AdditiveBlending} /></mesh>
-      <mesh rotation={[1.15, .3, .5]}><torusGeometry args={[5.5, .008, 6, 120]} /><meshBasicMaterial color="#7800ff" transparent opacity={0.18} blending={THREE.AdditiveBlending} /></mesh>
+      <mesh rotation={[Math.PI / 2, 0, 0]}><torusGeometry args={[4.5, .018, 6, 120]} /><meshBasicMaterial ref={ring1MatRef} color="#ffd84a" transparent opacity={.46} blending={THREE.AdditiveBlending} /></mesh>
+      <mesh rotation={[1.15, .3, .5]}><torusGeometry args={[5.5, .012, 6, 120]} /><meshBasicMaterial ref={ring2MatRef} color="#ff6b12" transparent opacity={.25} blending={THREE.AdditiveBlending} /></mesh>
+      <mesh rotation={[0.4, 1.2, 0.2]}><torusGeometry args={[6.2, .008, 4, 96]} /><meshBasicMaterial ref={ring3MatRef} color="#ffc52f" transparent opacity={.18} blending={THREE.AdditiveBlending} /></mesh>
     </group>
-    <SpriteLabel text={node.shortTitle} color={node.color} y={-4.4} prominent />
+    <SpriteLabel text={node.shortTitle} color={node.color} y={-4.8} prominent />
   </group>;
 }
 
@@ -1449,12 +1170,12 @@ interface NodeDetails {
 const DETAIL_MAP: Record<NodeId, NodeDetails> = {
   core: {
     status: "STABLE",
-    metricLabel: "Mycelial Nodes",
-    metricValue: "1,248 Connected",
+    metricLabel: "System Latency",
+    metricValue: "1.8ms",
     features: [
-      "Symbiotic routing of multi-agent neural paths",
-      "Unified mycelial event bus & model abstraction",
-      "Dynamic vector & semantic context sharing across nodes"
+      "Orchestrates multi-agent routing bounds",
+      "Unified event bus & model abstraction",
+      "Automatic workflow lifespan controls"
     ],
     ctaText: "WATCH VISION OVERVIEW",
     ctaUrl: "replay"
