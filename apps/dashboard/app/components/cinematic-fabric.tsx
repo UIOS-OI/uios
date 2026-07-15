@@ -697,20 +697,20 @@ function CoreNode({ active, reducedMotion, onSelect }: { active: boolean; reduce
       
       {/* 1. Outer Evolving Glass Crystal Shell */}
       <mesh>
-        <icosahedronGeometry ref={shellGeomRef} args={[2.3, 1]} />
+        <icosahedronGeometry ref={shellGeomRef} args={[2.3, 0]} />
         <meshPhysicalMaterial 
           ref={matRef} 
-          color="#020412" 
-          emissive="#7800ff" 
-          emissiveIntensity={active ? 2.5 : 1.8} 
-          roughness={0.12} 
-          metalness={0.1} 
-          transmission={0.92} 
-          thickness={1.8} 
-          ior={1.75}
+          color="#01020a" 
+          emissive="#24054a" 
+          emissiveIntensity={active ? 0.6 : 0.4} 
+          roughness={0.08} 
+          metalness={0.05} 
+          transmission={0.96} 
+          thickness={1.5} 
+          ior={1.65}
           flatShading={true} 
           transparent={true}
-          opacity={0.88}
+          opacity={0.9}
           toneMapped={false} 
         />
       </mesh>
