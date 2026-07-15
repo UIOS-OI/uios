@@ -1467,8 +1467,10 @@ export function IntelligenceUniverse() {
   const [ready, setReady] = useState(false);
   const [muted, setMuted] = useState(true);
   const [introVideoMuted, setIntroVideoMuted] = useState(true);
+  const [introPlaybackBlocked, setIntroPlaybackBlocked] = useState(false);
   const [introVersion, setIntroVersion] = useState(0);
   const introFinished = useRef(false);
+  const introVideoRef = useRef<HTMLVideoElement>(null);
   const hudLockUntil = useRef(0);
 
   // 3D Cinematic Playground states
@@ -1490,12 +1492,22 @@ export function IntelligenceUniverse() {
     window.dispatchEvent(new CustomEvent("uios:cinematic-complete"));
   }, []);
 
+  const playIntroVideo = useCallback(() => {
+    const video = introVideoRef.current;
+    if (!video) return;
+    void video.play().then(
+      () => setIntroPlaybackBlocked(false),
+      () => setIntroPlaybackBlocked(true),
+    );
+  }, []);
+
   // Listen to replay events from the landing overlay
   useEffect(() => {
     const handleReplay = () => {
       introFinished.current = false;
       setIntroVersion((v) => v + 1);
       setIntroVideoMuted(true);
+      setIntroPlaybackBlocked(false);
       setReady(false);
     };
     window.addEventListener("uios:replay-vision", handleReplay);
@@ -1508,17 +1520,12 @@ export function IntelligenceUniverse() {
     updateMotion();
     motion.addEventListener("change", updateMotion);
     
-    // Let reduced-motion visitors through immediately. The longer timer is a
-    // safety net for browsers that neither play nor report a media error.
-    const timer = window.setTimeout(completeIntro, motion.matches ? 0 : 12000);
-
     return () => { 
-      window.clearTimeout(timer); 
       motion.removeEventListener("change", updateMotion); 
       document.body.style.cursor = ""; 
       uiosAudio.close();
     };
-  }, [completeIntro, introVersion]);
+  }, [introVersion]);
 
   // Synchronized chimes with flickering sparks
   useEffect(() => {
@@ -1648,16 +1655,24 @@ export function IntelligenceUniverse() {
     <div className="universe-reticle" aria-hidden="true"><i /><i /></div>
     <div className="universe-intro" key={introVersion} aria-label="UIOS cinematic introduction">
       <video
+        ref={introVideoRef}
         className="universe-intro-video"
         autoPlay
         muted={introVideoMuted}
         playsInline
         preload="auto"
+        onCanPlay={playIntroVideo}
+        onPlaying={() => setIntroPlaybackBlocked(false)}
         onEnded={completeIntro}
         onError={completeIntro}
       >
         <source src="/media/uios-intro.mp4" type="video/mp4" />
       </video>
+      {introPlaybackBlocked ? (
+        <button type="button" className="universe-intro-play" onClick={playIntroVideo}>
+          <span>▶</span> PLAY INTRO
+        </button>
+      ) : null}
       <div className="universe-intro-actions">
         <button type="button" onClick={() => setIntroVideoMuted((isMuted) => !isMuted)}>
           {introVideoMuted ? "ENABLE SOUND" : "MUTE"}
