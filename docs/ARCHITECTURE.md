@@ -74,6 +74,10 @@ The `uios.warp-zoom.v1` preference switches OrbitControls between warp speed (`2
 
 The homepage mounts the universe immediately. Cinematic playback is explicitly user-triggered, and the transparent WebGL canvas sits above a CSS nebula visibility floor so media stalls, shader compilation failures, or context recovery cannot present an all-black first screen.
 
+The visibility floor also includes a DOM navigation constellation above the canvas for Root and Memory. It mirrors the primary entrances, dispatches the same intent-navigation events, and remains keyboard accessible, so GPU failure does not remove the user's ability to see or enter the major worlds.
+
+Direct planet activation uses a sub-second camera approach toward the selected entrance, then rebases the same canvas to the child cluster. The Memory fallback constellation additionally mirrors the safe document catalog as clickable mini gem-planets; document activation opens the existing reader overlay and never changes routes.
+
 The Memory system also receives an allowlisted repository-document catalog from `/api/universe/topology`. Only selected root product documents and `.md`/`.txt` files under `docs/` become clickable artifacts. `/api/universe/document` revalidates the catalog path before reading content, caps the response size, and never exposes environment files, databases, source trees, or arbitrary user-supplied filesystem paths. Artifacts open in a read-only overlay without changing universe depth.
 
 Orbit rotation uses a camera-local Universe target so dragging changes the view without throwing the camera across astronomical distances. Once a destination is reached, depth-specific camera bounds enable wheel/pinch zoom, orbit, and screen-space panning inside that coordinate space. Escape, the Travel Outward control, and the clickable Core traverse navigation history through physical return flights. Destination geometry has a larger invisible raycast volume, while its transparent label expands on geometry proximity or direct label hover; this improves selection without visually enlarging distant tags.

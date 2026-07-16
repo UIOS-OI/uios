@@ -14,6 +14,7 @@ const HOME_TARGET = new THREE.Vector3(0, 0, -10000);
 const HOME_POSITION = new THREE.Vector3(0, 260, 1900);
 const PORTAL_DISTANCE: Record<SpatialLevel, number> = { system: 30000, planet: 5200, world: 5200, district: 5100, building: 5100, workspace: 5000, document: 5200, graph: 5200, network: 5200 };
 const FLIGHT_TIME: Record<SpatialLevel, number> = { system: 9.5, planet: 8, world: 7, district: 6, building: 5.2, workspace: 4.8, document: 8, graph: 8, network: 8 };
+const REVEAL_DISTANCE: Record<SpatialLevel, number> = { system: 78000, planet: 56000, world: 48000, district: 42000, building: 36000, workspace: 32000, document: 30000, graph: 28000, network: 26000 };
 const LOCAL_VIEW_LIMITS: Record<SpatialLevel, { min: number; max: number }> = {
   system: { min: 700, max: 900000 }, planet: { min: 400, max: 700000 }, world: { min: 160, max: 500000 },
   district: { min: 70, max: 250000 }, building: { min: 24, max: 120000 }, workspace: { min: 8, max: 900000 },
@@ -54,6 +55,8 @@ export function CameraManager() {
 
     if (interaction.navigationMode === "reveal") {
       setPortalPhase("materialize");
+      const target = selectedRegion ? new THREE.Vector3(...selectedRegion.position) : HOME_TARGET.clone();
+      const approach = selectedRegion ? target.clone().add(new THREE.Vector3(0, REVEAL_DISTANCE[selectedRegion.level] * 0.12, REVEAL_DISTANCE[selectedRegion.level])) : HOME_POSITION.clone();
       flight.current = gsap.timeline({
         onComplete: () => {
           camera.position.copy(HOME_POSITION);
@@ -65,8 +68,10 @@ export function CameraManager() {
           arrive(selectedId);
         },
       });
-      flight.current.to(perspectiveCamera, { fov: 42, duration: 0.38, ease: "power2.in", onUpdate: () => perspectiveCamera.updateProjectionMatrix() });
-      flight.current.to(perspectiveCamera, { fov: 50, duration: 0.52, ease: "power3.out", onUpdate: () => perspectiveCamera.updateProjectionMatrix() });
+      flight.current.to(camera.position, { x: approach.x, y: approach.y, z: approach.z, duration: 0.72, ease: "power3.inOut" }, 0);
+      flight.current.to(controls.current.target, { x: target.x, y: target.y, z: target.z, duration: 0.72, ease: "power3.inOut" }, 0);
+      flight.current.to(perspectiveCamera, { fov: 37, duration: 0.46, ease: "power2.in", onUpdate: () => perspectiveCamera.updateProjectionMatrix() }, 0);
+      flight.current.to(perspectiveCamera, { fov: 48, duration: 0.26, ease: "power3.out", onUpdate: () => perspectiveCamera.updateProjectionMatrix() });
       return () => { flight.current?.kill(); };
     }
 

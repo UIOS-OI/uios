@@ -32,6 +32,8 @@ A region is not a mesh sharing one permanent scene graph with every other region
 - Scale is communicated through foreground spores, neural midground, intelligence rivers, distant structures, and extreme-background megastructures.
 - Loading is represented as ignition and assembly, never as a progress bar.
 - The living universe is the default first frame. The cinematic intro is opt-in so stalled media playback can never mask the operating surface with a black screen; a CSS nebula remains beneath the transparent canvas as a WebGL-safe visibility floor.
+- A DOM-based visual navigation constellation sits above WebGL for the Root and Memory layers, guaranteeing a visible Core and clickable galaxy/planet entrances when a browser or GPU returns a black canvas.
+- Planet activation performs a short continuous camera approach before the child cluster manifests in the same scene. Memory's allowlisted files are mirrored as mini gem-planets whose click action opens the in-scene reader without route or page navigation.
 - Live visual state must come from authenticated, tenant-bound platform evidence. The renderer must not invent provider health, customer activity, security events, or premium entitlements.
 - Reduced-motion, keyboard access, adaptive quality, and a non-WebGL fallback remain launch requirements.
 
