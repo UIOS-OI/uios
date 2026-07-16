@@ -6,23 +6,29 @@ import * as THREE from "three";
 import { useRenderTask } from "../engine/RenderLoop";
 import { useGalaxyTopology, type CelestialBody, type GalaxyDescriptor } from "../engine/UniverseManager";
 import { useInteractionSystem } from "./InteractionSystem";
+import { SacredGeometryShell } from "./RegionSystem";
 
 // ── GLSL shaders ─────────────────────────────────────────────────────────────
 const BODY_VERT = /* glsl */`
   varying vec2 vUv;
   varying vec3 vNormal;
+  varying vec3 vWorldPosition;
   void main() {
     vUv = uv;
     vNormal = normalize(normalMatrix * normal);
-    gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+    vec4 worldPos = modelMatrix * vec4(position, 1.0);
+    vWorldPosition = worldPos.xyz;
+    gl_Position = projectionMatrix * viewMatrix * worldPos;
   }
 `;
 const BODY_FRAG = /* glsl */`
   uniform vec3 uColor;
   uniform float uSeed;
   uniform float uTime;
+  uniform float uIsMoon;
   varying vec2 vUv;
   varying vec3 vNormal;
+  varying vec3 vWorldPosition;
   float hash(vec2 p){return fract(sin(dot(p,vec2(127.1+uSeed,311.7)))*43758.5453);}
   float noise(vec2 p){vec2 i=floor(p);vec2 f=fract(p);f=f*f*(3.0-2.0*f);return mix(mix(hash(i),hash(i+vec2(1,0)),f.x),mix(hash(i+vec2(0,1)),hash(i+1.0),f.x),f.y);}
   float fbm(vec2 p){float v=0.;float a=0.5;for(int i=0;i<5;i++){v+=noise(p)*a;p=p*2.1+7.3;a*=0.48;}return v;}
@@ -34,7 +40,14 @@ const BODY_FRAG = /* glsl */`
     float rim=pow(1.0-max(0.0,dot(vNormal,vec3(0,0,1))),2.5);
     vec3 surface=mix(uColor*0.12,uColor*0.88,terrain);
     vec3 col=surface*(0.08+diff*1.1)+uColor*rim*0.32;
-    gl_FragColor=vec4(col,1.0);
+    
+    float alpha = 1.0;
+    if (uIsMoon > 0.5) {
+      float dist = distance(cameraPosition, vWorldPosition);
+      alpha = smoothstep(120000.0, 40000.0, dist);
+    }
+    
+    gl_FragColor=vec4(col,alpha);
   }
 `;
 
@@ -103,6 +116,7 @@ function OrbitingBody({ body, isNew, onSelect }: OrbitingBodyProps) {
     uColor: { value: new THREE.Color(body.color) },
     uSeed: { value: Math.abs(body.id.split("").reduce((a, c) => a + c.charCodeAt(0), 0)) % 99 * 0.01 },
     uTime: { value: 0 },
+    uIsMoon: { value: 1.0 },
   }), [body.color, body.id]);
 
   useRenderTask(`body-${body.id}`, (state) => {
@@ -130,7 +144,7 @@ function OrbitingBody({ body, isNew, onSelect }: OrbitingBodyProps) {
       onPointerOut={() => { setHovered(false); document.body.style.cursor = "default"; }}
     >
       <sphereGeometry args={[1, 22, 14]} />
-      <shaderMaterial vertexShader={BODY_VERT} fragmentShader={BODY_FRAG} uniforms={uniforms} />
+      <shaderMaterial vertexShader={BODY_VERT} fragmentShader={BODY_FRAG} uniforms={uniforms} transparent={true} />
       {hovered && (
         <Html center distanceFactor={90000} style={{ pointerEvents: "none" }}>
           <div style={{
@@ -156,6 +170,7 @@ function HostPlanet({ galaxy, onEnter }: { galaxy: GalaxyDescriptor; onEnter: ()
     uColor: { value: new THREE.Color(galaxy.color) },
     uSeed: { value: seed * 0.01 },
     uTime: { value: 0 },
+    uIsMoon: { value: 0.0 },
   }), [galaxy.color, seed]);
   useRenderTask(`host-${galaxy.id}`, (state) => {
     if (ref.current) {
@@ -164,14 +179,14 @@ function HostPlanet({ galaxy, onEnter }: { galaxy: GalaxyDescriptor; onEnter: ()
     }
   }, 55);
   return (
-    <mesh
+    <group
       ref={ref}
       onClick={(e) => { e.stopPropagation(); onEnter(); }}
       onPointerOver={(e) => { e.stopPropagation(); setHovered(true); document.body.style.cursor = "pointer"; }}
       onPointerOut={() => { setHovered(false); document.body.style.cursor = "default"; }}
+      scale={radius * 0.8} // Scale up the sacred geometry slightly to match the previous sphere size
     >
-      <sphereGeometry args={[radius, 48, 32]} />
-      <shaderMaterial vertexShader={BODY_VERT} fragmentShader={BODY_FRAG} uniforms={uniforms} />
+      <SacredGeometryShell color={galaxy.color} id={galaxy.id} seed={seed * 0.01} />
       {hovered && (
         <Html center distanceFactor={90000} style={{ pointerEvents: "none" }}>
           <div style={{
@@ -183,7 +198,7 @@ function HostPlanet({ galaxy, onEnter }: { galaxy: GalaxyDescriptor; onEnter: ()
           </div>
         </Html>
       )}
-    </mesh>
+    </group>
   );
 }
 

@@ -110,7 +110,7 @@ function seedFromId(id: string) {
   return (value >>> 0) / 4294967295;
 }
 
-function SacredGeometryShell({ color, id, seed }: { color: string; id: string; seed: number }) {
+export function SacredGeometryShell({ color, id, seed }: { color: string; id: string; seed: number }) {
   const shell = useRef<THREE.Group>(null);
   const inner = useRef<THREE.Group>(null);
   const variant = Math.min(3, Math.floor(seed * 4));

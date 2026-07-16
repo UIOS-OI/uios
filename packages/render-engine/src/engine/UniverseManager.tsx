@@ -71,13 +71,13 @@ type GalaxyTopologyState = {
 const GalaxyContext = createContext<GalaxyTopologyState>({ galaxies: [], newArrivals: new Set() });
 
 const SYSTEMS: Array<Omit<UniverseRegion, "level" | "parentId" | "source">> = [
-  { id: "memory", label: "Memory Atmosphere", eyebrow: "Living knowledge galaxy", description: "A luminous intelligence atmosphere containing every authorized file, memory, blueprint, and knowledge world.", kind: "memory", color: "#d8fbff", position: [90000, 28000, -158000] },
-  { id: "aegis", label: "Aegis System", eyebrow: "Security civilization", description: "A distant defensive system surrounding governed actions, policy, and approval evidence.", kind: "aegis", color: "#35c8ff", position: [-108000, 22000, -196000] },
-  { id: "router", label: "Router System", eyebrow: "Intelligence interchange", description: "A high-energy transit system routing intent toward models, tools, agents, and workflows.", kind: "router", color: "#b675ff", position: [46000, -48000, -234000] },
-  { id: "agents", label: "Agent Nexus", eyebrow: "Autonomous civilization", description: "An active system of agents, tools, approvals, and durable execution paths.", kind: "agents", color: "#ff76c8", position: [-138000, -36000, -270000] },
-  { id: "observatory", label: "Observatory System", eyebrow: "System intelligence", description: "A remote evidence system where usage, performance, and activity become spatial signals.", kind: "observatory", color: "#6fd7ff", position: [150000, 56000, -308000] },
-  { id: "forge", label: "Forge System", eyebrow: "Construction civilization", description: "A stellar foundry where governed capabilities, workflows, and integrations assemble.", kind: "forge", color: "#ffb64f", position: [-62000, 84000, -342000] },
-  { id: "marketplace", label: "Marketplace System", eyebrow: "Capability exchange", description: "A distributed trade system for explicitly permitted tools and integrations.", kind: "marketplace", color: "#63f0ba", position: [126000, -78000, -378000] },
+  { id: "memory", label: "Memory Atmosphere", eyebrow: "Living knowledge galaxy", description: "A luminous intelligence atmosphere containing every authorized file, memory, blueprint, and knowledge world.", kind: "memory", color: "#d8fbff", position: [720000, 224000, -1264000] },
+  { id: "aegis", label: "Aegis System", eyebrow: "Security civilization", description: "A distant defensive system surrounding governed actions, policy, and approval evidence.", kind: "aegis", color: "#35c8ff", position: [-864000, 176000, -1568000] },
+  { id: "router", label: "Router System", eyebrow: "Intelligence interchange", description: "A high-energy transit system routing intent toward models, tools, agents, and workflows.", kind: "router", color: "#b675ff", position: [368000, -384000, -1872000] },
+  { id: "agents", label: "Agent Nexus", eyebrow: "Autonomous civilization", description: "An active system of agents, tools, approvals, and durable execution paths.", kind: "agents", color: "#ff76c8", position: [-1104000, -288000, -2160000] },
+  { id: "observatory", label: "Observatory System", eyebrow: "System intelligence", description: "A remote evidence system where usage, performance, and activity become spatial signals.", kind: "observatory", color: "#6fd7ff", position: [1200000, 448000, -2464000] },
+  { id: "forge", label: "Forge System", eyebrow: "Construction civilization", description: "A stellar foundry where governed capabilities, workflows, and integrations assemble.", kind: "forge", color: "#ffb64f", position: [-496000, 672000, -2736000] },
+  { id: "marketplace", label: "Marketplace System", eyebrow: "Capability exchange", description: "A distributed trade system for explicitly permitted tools and integrations.", kind: "marketplace", color: "#63f0ba", position: [1008000, -624000, -3024000] },
 ];
 
 const DEPARTMENTS = ["Policies", "Engineering", "Sales", "HR", "Finance", "Customer"];

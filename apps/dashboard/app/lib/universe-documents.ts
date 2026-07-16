@@ -84,13 +84,13 @@ const ZONE_COLORS: Record<string, string> = {
 };
 
 const ZONE_POSITIONS: Record<string, [number, number, number]> = {
-  memory:      [ 90000,  28000, -158000],
-  aegis:       [-108000, 22000, -196000],
-  router:      [ 46000, -48000, -234000],
-  agents:      [-138000,-36000, -270000],
-  observatory: [ 150000, 56000, -308000],
-  forge:       [-62000,  84000, -342000],
-  marketplace: [ 126000,-78000, -378000],
+  memory:      [ 720000,  224000,-1264000],
+  aegis:       [-864000,  176000,-1568000],
+  router:      [ 368000, -384000,-1872000],
+  agents:      [-1104000,-288000,-2160000],
+  observatory: [ 1200000, 448000,-2464000],
+  forge:       [-496000,  672000,-2736000],
+  marketplace: [ 1008000,-624000,-3024000],
 };
 
 const ZONE_LABELS: Record<string, string> = {
