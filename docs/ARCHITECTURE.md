@@ -70,6 +70,8 @@ Visual scale is hierarchical as well as structural: every navigable entrance car
 
 Orbit controls remain active in the Root Universe and every arrived universe. Wheel/pinch movement uses accelerated cursor-directed dolly behavior across the astronomical coordinate ranges; drag orbits, right-drag pans, and clicking an entrance reveals its next reality layer.
 
+The initial landing begins from a distant offset camera and eases physically toward the Core over 4.6 seconds, producing foreground/midground parallax instead of a static first frame. Any wheel, pointer, or touch control immediately cancels the director and hands the current camera state to the user. The root camera director never restores dolly distance after manual input. Arrival notices ignore wheel/pointer traffic outside their explicit button, so they cannot block camera control inside a newly entered zone.
+
 The `uios.warp-zoom.v1` preference switches OrbitControls between warp speed (`2.8`) and precision speed (`0.72`). The shell persists the choice locally and broadcasts `uios:warp-zoom`; the render engine owns the actual camera response.
 
 The homepage mounts the universe immediately. Cinematic playback is explicitly user-triggered, and the transparent WebGL canvas sits above a CSS nebula visibility floor so media stalls, shader compilation failures, or context recovery cannot present an all-black first screen.

@@ -149,6 +149,7 @@
   border-radius: 20px;
   box-shadow: 0 28px 100px rgba(0, 0, 12, .58), inset 0 1px rgba(255, 255, 255, .08);
   color: #edf4ff;
+  pointer-events: none;
   left: 50%;
   max-width: min(440px, calc(100vw - 36px));
   padding: 24px 26px;
@@ -160,6 +161,7 @@
   z-index: 7;
   backdrop-filter: blur(20px) saturate(130%);
 }
+.arrivalNotice button { pointer-events: auto; }
 
 .arrivalNotice > span { color: #8fffe0; font: 600 8px ui-monospace, SFMono-Regular, Menlo, monospace; letter-spacing: .2em; text-transform: uppercase; }
 .arrivalNotice h1 { font-size: clamp(24px, 4vw, 42px); font-weight: 350; letter-spacing: -.045em; margin: 9px 0 12px; }

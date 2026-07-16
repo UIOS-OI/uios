@@ -24,6 +24,7 @@
 | 13 | Galaxy-scale knowledge worlds | Render every navigable node as a luminous galaxy entrance, brighten the Core and environments, and present Memory as an atmosphere of massive file-planets and geometric knowledge gems. | M12 | FOUNDATION DONE |
 | 14 | Spatial discovery LOD | Remove fixed planet controls, compress impractical travel distances, reveal orbiting contents as the camera approaches, and keep navigation anchored to the living 3D fabric. | M13 | FOUNDATION DONE |
 | 15 | Procedural astronomical realism | Generate deterministic planetary terrain, cloud bands, atmospheres, rings, stellar temperatures, galactic dust, and multi-depth star fields from topology IDs so visual variety grows with the platform. | M14 | FOUNDATION DONE |
+| 16 | NASA camera motion | Add a cancellable deep-space landing push, preserve user dolly distance at Root, and keep inertial zoom, orbit, and pan active after every coordinate-space rebase. | M15 | DONE |
 
 ## Code Layout
 - apps/dashboard/app/lib/state-store.ts - Persistence

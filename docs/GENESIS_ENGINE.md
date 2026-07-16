@@ -117,6 +117,12 @@ Ambient color, current density, pulse velocity, lighting, and audio respond to t
 - Multi-scale stellar fields use varied color temperatures and twinkle rates, while a faint galactic plane and region-colored nebular dust establish realistic depth.
 - Realism is topology-driven rather than texture-bound: newly registered feature, provider, and category nodes automatically receive stable visual identities.
 
+### G2.3 — NASA camera motion — complete
+
+- The initial universe assembles through a 4.6-second deep-space camera push with changing field of view and layered parallax.
+- User input cancels the camera director immediately and preserves the current position instead of snapping back to a home distance.
+- Root and every arrived zone retain cursor-directed wheel/pinch zoom, orbit, and right-drag pan across their full streamed coordinate space.
+
 ### G3 — GPU intelligence rivers
 
 - GPU spline particles with variable width, branching, merge/split behavior, provider color transitions, and load-driven acceleration.

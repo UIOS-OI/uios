@@ -7,7 +7,6 @@ import { type ElementRef, useEffect, useLayoutEffect, useRef, useState } from "r
 import * as THREE from "three";
 import { useInteractionSystem } from "../systems/InteractionSystem";
 import { useRenderTask } from "./RenderLoop";
-import { useUniverseActivity } from "./UniverseActivityManager";
 import { useUniverseTopology, type SpatialLevel } from "./UniverseManager";
 
 const HOME_TARGET = new THREE.Vector3(0, 0, -10000);
@@ -27,7 +26,6 @@ export function CameraManager() {
   const controls = useRef<ElementRef<typeof OrbitControls>>(null);
   const [warpZoom, setWarpZoom] = useState(true);
   const interaction = useInteractionSystem();
-  const activity = useUniverseActivity();
   const topology = useUniverseTopology();
   const { arrive, arrivedId, pointer, pointerPresence, selectedId, setPortalPhase } = interaction;
   const selectedRegion = topology.nodeById(selectedId);
@@ -35,7 +33,32 @@ export function CameraManager() {
   const localViewEnabled = arrivedId === selectedId && interaction.portalPhase === "idle";
   const viewLimits = activeRegion ? LOCAL_VIEW_LIMITS[activeRegion.level] : { min: 280, max: 1200000 };
   const flight = useRef<gsap.core.Timeline | null>(null);
+  const landing = useRef<gsap.core.Timeline | null>(null);
   const isFlying = useRef(false);
+
+  useLayoutEffect(() => {
+    if (!controls.current) return;
+    isFlying.current = true;
+    camera.position.set(-4800, 3200, 48000);
+    controls.current.target.set(0, 600, -52000);
+    perspectiveCamera.fov = 61;
+    perspectiveCamera.updateProjectionMatrix();
+    controls.current.update();
+    landing.current = gsap.timeline({
+      defaults: { ease: "power2.inOut" },
+      onComplete: () => { isFlying.current = false; },
+    });
+    landing.current.to(camera.position, { x: HOME_POSITION.x, y: HOME_POSITION.y, z: HOME_POSITION.z, duration: 4.6 }, 0);
+    landing.current.to(controls.current.target, { x: HOME_TARGET.x, y: HOME_TARGET.y, z: HOME_TARGET.z, duration: 4.6 }, 0);
+    landing.current.to(perspectiveCamera, { fov: 48, duration: 4.1, onUpdate: () => perspectiveCamera.updateProjectionMatrix() }, 0.25);
+    return () => { landing.current?.kill(); };
+  }, [camera, perspectiveCamera]);
+
+  const takeCameraControl = () => {
+    if (!landing.current?.isActive()) return;
+    landing.current.kill();
+    isFlying.current = false;
+  };
 
   useEffect(() => {
     setWarpZoom(window.localStorage.getItem("uios.warp-zoom.v1") !== "off");
@@ -49,6 +72,7 @@ export function CameraManager() {
 
   useLayoutEffect(() => {
     if (!controls.current || selectedId === arrivedId) return;
+    landing.current?.kill();
     flight.current?.kill();
     isFlying.current = true;
     controls.current.enabled = false;
@@ -123,10 +147,9 @@ export function CameraManager() {
       controls.current.target.y = THREE.MathUtils.damp(controls.current.target.y, HOME_TARGET.y + pointer.current.y * 50 * awareness, 1.8, delta);
       camera.position.x += Math.sin(elapsed * 0.085) * delta * 0.08;
       camera.position.y += Math.cos(elapsed * 0.07) * delta * 0.05;
-      camera.position.z = THREE.MathUtils.damp(camera.position.z, HOME_POSITION.z - activity.activityLevel.current * 22, 0.8, delta);
     }
     controls.current.update();
   }, 30);
 
-  return <OrbitControls ref={controls} enableDamping dampingFactor={warpZoom ? 0.065 : 0.045} enablePan={localViewEnabled} enableRotate={localViewEnabled} enableZoom={localViewEnabled} maxDistance={viewLimits.max} minDistance={viewLimits.min} panSpeed={0.9} rotateSpeed={0.45} screenSpacePanning target={HOME_TARGET} zoomSpeed={warpZoom ? 2.8 : 0.72} zoomToCursor />;
+  return <OrbitControls ref={controls} enableDamping dampingFactor={warpZoom ? 0.075 : 0.045} enablePan={localViewEnabled} enableRotate={localViewEnabled} enableZoom={localViewEnabled} maxDistance={viewLimits.max} minDistance={viewLimits.min} onStart={takeCameraControl} panSpeed={warpZoom ? 1.15 : 0.72} rotateSpeed={0.45} screenSpacePanning target={HOME_TARGET} zoomSpeed={warpZoom ? 3.4 : 0.72} zoomToCursor />;
 }
