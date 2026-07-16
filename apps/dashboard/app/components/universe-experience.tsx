@@ -1,6 +1,6 @@
 "use client";
 
-import { SceneManager } from "@uios/render-engine";
+import { SceneManager, GalaxyManager, FluidConnectionSystem, SolarSystem, CelestialInfoPanel, type CelestialBody, DefaultRenderScene } from "@uios/render-engine";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { type FormEvent, useCallback, useEffect, useRef, useState } from "react";
 import styles from "./universe-experience.module.css";
@@ -12,6 +12,7 @@ export function UniverseExperience() {
   const reduceMotion = useReducedMotion();
   const [entered, setEntered] = useState(true);
   const [blocked, setBlocked] = useState(false);
+  const [selectedBody, setSelectedBody] = useState<CelestialBody | null>(null);
   const [muted, setMuted] = useState(true);
   const [performance, setPerformance] = useState(1);
   const [activeRegion, setActiveRegion] = useState<string | null>(null);
@@ -134,7 +135,14 @@ export function UniverseExperience() {
   return (
     <main className={styles.page}>
       <div className={styles.visibilityField} aria-hidden="true" />
-      <SceneManager className={styles.canvas} onPerformanceChange={setPerformance} onRegionChange={handleRegionChange} />
+      <GalaxyManager>
+        <SceneManager className={styles.canvas} onPerformanceChange={setPerformance} onRegionChange={handleRegionChange}>
+          <DefaultRenderScene />
+          <FluidConnectionSystem />
+          <SolarSystem onBodySelect={(body) => setSelectedBody(body)} />
+        </SceneManager>
+        <CelestialInfoPanel body={selectedBody} onClose={() => setSelectedBody(null)} />
+      </GalaxyManager>
 
       <header className={styles.statusRail}>
         <a href="/" className={styles.identity} aria-label="UIOS intelligence universe">
