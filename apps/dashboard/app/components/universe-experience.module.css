@@ -80,6 +80,12 @@
   text-transform: uppercase;
 }
 
+.warpActive {
+  border-color: rgba(110, 241, 255, .48);
+  box-shadow: 0 0 20px rgba(72, 200, 255, .14), inset 0 0 14px rgba(90, 190, 255, .08);
+  color: #b9f7ff;
+}
+
 .guidance {
   bottom: clamp(18px, 3vw, 42px);
   color: #7480a5;

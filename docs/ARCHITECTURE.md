@@ -70,6 +70,8 @@ Visual scale is hierarchical as well as structural: every navigable entrance car
 
 Orbit controls remain active in the Root Universe and every arrived universe. Wheel/pinch movement uses accelerated cursor-directed dolly behavior across the astronomical coordinate ranges; drag orbits, right-drag pans, and clicking an entrance reveals its next reality layer.
 
+The `uios.warp-zoom.v1` preference switches OrbitControls between warp speed (`2.8`) and precision speed (`0.72`). The shell persists the choice locally and broadcasts `uios:warp-zoom`; the render engine owns the actual camera response.
+
 The homepage mounts the universe immediately. Cinematic playback is explicitly user-triggered, and the transparent WebGL canvas sits above a CSS nebula visibility floor so media stalls, shader compilation failures, or context recovery cannot present an all-black first screen.
 
 The Memory system also receives an allowlisted repository-document catalog from `/api/universe/topology`. Only selected root product documents and `.md`/`.txt` files under `docs/` become clickable artifacts. `/api/universe/document` revalidates the catalog path before reading content, caps the response size, and never exposes environment files, databases, source trees, or arbitrary user-supplied filesystem paths. Artifacts open in a read-only overlay without changing universe depth.

@@ -3,7 +3,7 @@
 import { OrbitControls } from "@react-three/drei";
 import { useThree } from "@react-three/fiber";
 import gsap from "gsap";
-import { type ElementRef, useLayoutEffect, useRef } from "react";
+import { type ElementRef, useEffect, useLayoutEffect, useRef, useState } from "react";
 import * as THREE from "three";
 import { useInteractionSystem } from "../systems/InteractionSystem";
 import { useRenderTask } from "./RenderLoop";
@@ -24,6 +24,7 @@ export function CameraManager() {
   const camera = useThree((state) => state.camera);
   const perspectiveCamera = camera as THREE.PerspectiveCamera;
   const controls = useRef<ElementRef<typeof OrbitControls>>(null);
+  const [warpZoom, setWarpZoom] = useState(true);
   const interaction = useInteractionSystem();
   const activity = useUniverseActivity();
   const topology = useUniverseTopology();
@@ -34,6 +35,16 @@ export function CameraManager() {
   const viewLimits = activeRegion ? LOCAL_VIEW_LIMITS[activeRegion.level] : { min: 280, max: 1200000 };
   const flight = useRef<gsap.core.Timeline | null>(null);
   const isFlying = useRef(false);
+
+  useEffect(() => {
+    setWarpZoom(window.localStorage.getItem("uios.warp-zoom.v1") !== "off");
+    const updateWarpZoom = (event: Event) => {
+      const detail = (event as CustomEvent<{ enabled?: boolean }>).detail;
+      if (typeof detail?.enabled === "boolean") setWarpZoom(detail.enabled);
+    };
+    window.addEventListener("uios:warp-zoom", updateWarpZoom);
+    return () => window.removeEventListener("uios:warp-zoom", updateWarpZoom);
+  }, []);
 
   useLayoutEffect(() => {
     if (!controls.current || selectedId === arrivedId) return;
@@ -112,5 +123,5 @@ export function CameraManager() {
     controls.current.update();
   }, 30);
 
-  return <OrbitControls ref={controls} enableDamping dampingFactor={0.065} enablePan={localViewEnabled} enableRotate={localViewEnabled} enableZoom={localViewEnabled} maxDistance={viewLimits.max} minDistance={viewLimits.min} panSpeed={0.9} rotateSpeed={0.45} screenSpacePanning target={HOME_TARGET} zoomSpeed={2.8} zoomToCursor />;
+  return <OrbitControls ref={controls} enableDamping dampingFactor={warpZoom ? 0.065 : 0.045} enablePan={localViewEnabled} enableRotate={localViewEnabled} enableZoom={localViewEnabled} maxDistance={viewLimits.max} minDistance={viewLimits.min} panSpeed={0.9} rotateSpeed={0.45} screenSpacePanning target={HOME_TARGET} zoomSpeed={warpZoom ? 2.8 : 0.72} zoomToCursor />;
 }

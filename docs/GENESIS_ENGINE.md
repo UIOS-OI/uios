@@ -16,6 +16,7 @@ A region is not a mesh sharing one permanent scene graph with every other region
 - The Core remains the conceptual home and appears in every self-similar universe.
 - Local wheel/pinch zoom, orbit, and pan inspect the active layer without changing hierarchy.
 - Cursor-directed zoom is enabled at the Root and every nested layer with accelerated travel across astronomical spacing, so approaching an object never requires repetitive scrolling.
+- Warp Zoom is a persistent user toggle: on uses astronomical cursor-directed travel, while off restores precision dolly speed for close inspection.
 - Explicit Travel Outward, Escape, or Core activation returns through navigation history.
 - Tunnel transitions are event language, not routine navigation.
 - Allowlisted blueprints and guides appear as Memory artifacts and open immediately in a read-only in-universe viewer.

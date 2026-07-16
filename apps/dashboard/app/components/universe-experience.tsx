@@ -19,10 +19,25 @@ export function UniverseExperience() {
   const [arrivalNotice, setArrivalNotice] = useState<string | null>(null);
   const [documentReader, setDocumentReader] = useState<{ title: string; path: string; content?: string; error?: string } | null>(null);
   const [intent, setIntent] = useState("");
+  const [warpZoom, setWarpZoom] = useState(true);
   const [activityLabel, setActivityLabel] = useState("Listening for intelligence activity");
   const { disable: disableAudio, enable: enableAudio, enabled: audioEnabled } = useLivingAudio(activeRegion);
   const enterUniverse = useCallback(() => setEntered(true), []);
   const travelOutward = useCallback(() => window.dispatchEvent(new Event("uios:navigate-back")), []);
+
+  useEffect(() => {
+    const stored = window.localStorage.getItem("uios.warp-zoom.v1");
+    if (stored === "off") setWarpZoom(false);
+  }, []);
+
+  const toggleWarpZoom = useCallback(() => {
+    setWarpZoom((current) => {
+      const enabled = !current;
+      window.localStorage.setItem("uios.warp-zoom.v1", enabled ? "on" : "off");
+      window.dispatchEvent(new CustomEvent("uios:warp-zoom", { detail: { enabled } }));
+      return enabled;
+    });
+  }, []);
 
   useEffect(() => {
     if (entered || reduceMotion) return;
@@ -131,6 +146,7 @@ export function UniverseExperience() {
           <span><i /> Universe active</span>
           <span>{performance >= 0.5 ? "Adaptive 60 FPS target" : "Economy render mode"}</span>
           <button className={styles.audioControl} onClick={toggleSound} type="button">{audioEnabled ? "Mute living audio" : "Enable living audio"}</button>
+          <button aria-pressed={warpZoom} className={`${styles.audioControl} ${warpZoom ? styles.warpActive : ""}`} onClick={toggleWarpZoom} type="button">Warp zoom {warpZoom ? "on" : "off"}</button>
           <button className={styles.audioControl} onClick={() => { setBlocked(false); setEntered(false); }} type="button">Play cinematic intro</button>
         </div>
       </header>
@@ -138,7 +154,7 @@ export function UniverseExperience() {
       <div className={styles.guidance}>
         <span>Drag to look</span>
         <span>{activeRegion ? "Select an object to reveal its reality layer" : "Select a system to reveal it"}</span>
-        <span>{activeRegion ? "Wheel fast zoom · drag to orbit · right-drag to pan" : "Wheel toward any galaxy · click to reveal"}</span>
+        <span>{warpZoom ? "Wheel warp zoom toward cursor" : "Wheel precision zoom"} · drag to orbit</span>
       </div>
       {activeRegion ? <button className={styles.navigationControl} onClick={travelOutward} type="button">← Travel outward</button> : null}
       <div className={styles.livingSignal} aria-live="polite"><i />{activityLabel}</div>
