@@ -72,6 +72,57 @@ function GalaxyShell({ color, level }: { color: string; level: SpatialLevel }) {
   );
 }
 
+function OrbitingContents({ color, id, index, level }: { color: string; id: string; index: number; level: SpatialLevel }) {
+  const group = useRef<THREE.Group>(null);
+  const material = useRef<THREE.PointsMaterial>(null);
+  const worldPosition = useRef(new THREE.Vector3());
+  const inheritedScale = useRef(new THREE.Vector3(1, 1, 1));
+  const geometry = useMemo(() => {
+    const count = level === "system" ? 44 : 28;
+    const positions = new Float32Array(count * 3);
+    for (let item = 0; item < count; item += 1) {
+      const radius = 3.2 + seeded(item + index * 7, 5) * 3.6;
+      const angle = item / count * Math.PI * 6 + seeded(item, index + 8) * 0.5;
+      positions[item * 3] = Math.cos(angle) * radius;
+      positions[item * 3 + 1] = (seeded(item, index + 9) - 0.5) * 2.7;
+      positions[item * 3 + 2] = Math.sin(angle) * radius;
+    }
+    const buffer = new THREE.BufferGeometry();
+    buffer.setAttribute("position", new THREE.BufferAttribute(positions, 3));
+    return buffer;
+  }, [index, level]);
+
+  useRenderTask(`contents-${id}`, (state, delta) => {
+    if (!group.current || !material.current) return;
+    group.current.getWorldPosition(worldPosition.current);
+    group.current.getWorldScale(inheritedScale.current);
+    const distance = state.camera.position.distanceTo(worldPosition.current);
+    const localScale = Math.max(1, inheritedScale.current.x);
+    const visibility = THREE.MathUtils.clamp(1 - (distance / localScale - 9) / 22, 0.08, 0.82);
+    material.current.opacity = THREE.MathUtils.damp(material.current.opacity, visibility, 4, delta);
+    group.current.rotation.y += delta * 0.045;
+    group.current.rotation.z -= delta * 0.012;
+  }, 3);
+
+  return (
+    <group ref={group} rotation={[0.18, index * 0.31, -0.08]}>
+      <points geometry={geometry}>
+        <pointsMaterial ref={material} color={color} size={0.19} sizeAttenuation transparent opacity={0.1} depthWrite={false} blending={THREE.AdditiveBlending} />
+      </points>
+      {Array.from({ length: 9 }, (_, item) => {
+        const angle = item / 9 * Math.PI * 2 + index * 0.17;
+        const radius = 3.8 + (item % 3) * 0.72;
+        return (
+          <mesh key={item} position={[Math.cos(angle) * radius, Math.sin(item * 1.9) * 0.72, Math.sin(angle) * radius]} rotation={[item * 0.7, angle, item * 0.22]} scale={0.12 + (item % 3) * 0.035}>
+            <octahedronGeometry args={[1, 0]} />
+            <meshBasicMaterial color={color} transparent opacity={0.68} blending={THREE.AdditiveBlending} />
+          </mesh>
+        );
+      })}
+    </group>
+  );
+}
+
 function RegionGeometry({ kind, color, level, action }: { kind: UniverseRegionKind; color: string; level: SpatialLevel; action?: UniverseRegion["action"] }) {
   if (level === "system") {
     return <>
@@ -194,6 +245,7 @@ function RegionDestination({ region, index, renderInterface, children }: { regio
         onClick={(event) => { event.stopPropagation(); activate(); }}
       >
         {region.action === "open-document" ? null : <GalaxyShell color={region.color} level={region.level} />}
+        {region.action === "open-document" ? null : <OrbitingContents color={region.color} id={region.id} index={index} level={region.level} />}
         <RegionGeometry kind={region.kind} color={region.color} level={region.level} action={region.action} />
         <mesh
           onPointerOver={(event) => { event.stopPropagation(); interaction.hover(region.id); }}

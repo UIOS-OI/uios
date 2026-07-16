@@ -33,17 +33,26 @@ export type UniverseTopology = {
 };
 
 const SYSTEMS: Array<Omit<UniverseRegion, "level" | "parentId" | "source">> = [
-  { id: "memory", label: "Memory Atmosphere", eyebrow: "Living knowledge galaxy", description: "A luminous intelligence atmosphere containing every authorized file, memory, blueprint, and knowledge world.", kind: "memory", color: "#d8fbff", position: [280000, 90000, -420000] },
-  { id: "aegis", label: "Aegis System", eyebrow: "Security civilization", description: "A distant defensive system surrounding governed actions, policy, and approval evidence.", kind: "aegis", color: "#35c8ff", position: [-360000, 70000, -610000] },
-  { id: "router", label: "Router System", eyebrow: "Intelligence interchange", description: "A high-energy transit system routing intent toward models, tools, agents, and workflows.", kind: "router", color: "#b675ff", position: [160000, -140000, -780000] },
-  { id: "agents", label: "Agent Nexus", eyebrow: "Autonomous civilization", description: "An active system of agents, tools, approvals, and durable execution paths.", kind: "agents", color: "#ff76c8", position: [-620000, -90000, -920000] },
-  { id: "observatory", label: "Observatory System", eyebrow: "System intelligence", description: "A remote evidence system where usage, performance, and activity become spatial signals.", kind: "observatory", color: "#6fd7ff", position: [720000, 180000, -1080000] },
-  { id: "forge", label: "Forge System", eyebrow: "Construction civilization", description: "A stellar foundry where governed capabilities, workflows, and integrations assemble.", kind: "forge", color: "#ffb64f", position: [-260000, 300000, -1260000] },
-  { id: "marketplace", label: "Marketplace System", eyebrow: "Capability exchange", description: "A distributed trade system for explicitly permitted tools and integrations.", kind: "marketplace", color: "#63f0ba", position: [540000, -260000, -1440000] },
+  { id: "memory", label: "Memory Atmosphere", eyebrow: "Living knowledge galaxy", description: "A luminous intelligence atmosphere containing every authorized file, memory, blueprint, and knowledge world.", kind: "memory", color: "#d8fbff", position: [90000, 28000, -158000] },
+  { id: "aegis", label: "Aegis System", eyebrow: "Security civilization", description: "A distant defensive system surrounding governed actions, policy, and approval evidence.", kind: "aegis", color: "#35c8ff", position: [-108000, 22000, -196000] },
+  { id: "router", label: "Router System", eyebrow: "Intelligence interchange", description: "A high-energy transit system routing intent toward models, tools, agents, and workflows.", kind: "router", color: "#b675ff", position: [46000, -48000, -234000] },
+  { id: "agents", label: "Agent Nexus", eyebrow: "Autonomous civilization", description: "An active system of agents, tools, approvals, and durable execution paths.", kind: "agents", color: "#ff76c8", position: [-138000, -36000, -270000] },
+  { id: "observatory", label: "Observatory System", eyebrow: "System intelligence", description: "A remote evidence system where usage, performance, and activity become spatial signals.", kind: "observatory", color: "#6fd7ff", position: [150000, 56000, -308000] },
+  { id: "forge", label: "Forge System", eyebrow: "Construction civilization", description: "A stellar foundry where governed capabilities, workflows, and integrations assemble.", kind: "forge", color: "#ffb64f", position: [-62000, 84000, -342000] },
+  { id: "marketplace", label: "Marketplace System", eyebrow: "Capability exchange", description: "A distributed trade system for explicitly permitted tools and integrations.", kind: "marketplace", color: "#63f0ba", position: [126000, -78000, -378000] },
 ];
 
 const DEPARTMENTS = ["Policies", "Engineering", "Sales", "HR", "Finance", "Customer"];
 const ENGINEERING_WORLDS = ["Repositories", "Projects", "Documentation", "Source Code", "Functions"];
+const SYSTEM_PLANETS: Record<string, string[]> = {
+  memory: DEPARTMENTS,
+  aegis: ["Shield", "Identity", "Policy", "Audit", "Threat", "Approvals"],
+  router: ["Providers", "Models", "Requests", "Traffic", "Tools", "Gateways"],
+  agents: ["Swarms", "Tasks", "Workflows", "Collaboration", "Skills", "Runs"],
+  observatory: ["Analytics", "Traces", "Usage", "Performance", "Evidence", "Events"],
+  forge: ["Blueprints", "Integrations", "Workflows", "Templates", "Builds", "Releases"],
+  marketplace: ["Providers", "Tools", "Agents", "Connectors", "Models", "Collections"],
+};
 
 function slug(value: string) { return value.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, ""); }
 function node(input: Partial<UniverseRegion> & Pick<UniverseRegion, "id" | "label" | "kind" | "level" | "parentId" | "position" | "color">): UniverseRegion {
@@ -53,20 +62,20 @@ function node(input: Partial<UniverseRegion> & Pick<UniverseRegion, "id" | "labe
 function buildStructuralRegions(): UniverseRegion[] {
   const nodes: UniverseRegion[] = SYSTEMS.map((system) => node({ ...system, level: "system", parentId: null, source: "structural" }));
   for (const system of SYSTEMS) {
-    const planetNames = system.id === "memory" ? DEPARTMENTS : [system.label.replace(" System", "")];
+    const planetNames = SYSTEM_PLANETS[system.id] ?? [system.label.replace(" System", "")];
     planetNames.forEach((name, index) => {
       const planetId = `${system.id}-${slug(name)}-planet`;
-      const spread = planetNames.length === 1 ? 0 : (index - (planetNames.length - 1) / 2) * 120000;
-      nodes.push(node({ id: planetId, label: `${name} Planet`, kind: system.kind, level: "planet", parentId: system.id, color: system.color, position: [spread, Math.sin(index * 1.7) * 42000, -360000 - Math.abs(spread) * 0.18] }));
+      const spread = planetNames.length === 1 ? 0 : (index - (planetNames.length - 1) / 2) * 60000;
+      nodes.push(node({ id: planetId, label: `${name} Planet`, kind: system.kind, level: "planet", parentId: system.id, color: system.color, position: [spread, Math.sin(index * 1.7) * 28000, -176000 - Math.abs(spread) * 0.1] }));
       const worlds = system.id === "memory" && name === "Engineering" ? ENGINEERING_WORLDS : [`${name} World`];
       worlds.forEach((worldName, worldIndex) => {
         const worldId = `${planetId}-${slug(worldName)}-world`;
-        nodes.push(node({ id: worldId, label: worldName, kind: system.kind, level: "world", parentId: planetId, color: system.color, position: [(worldIndex - (worlds.length - 1) / 2) * 135000, Math.sin(worldIndex * 1.4) * 38000, -350000 - Math.abs(worldIndex - (worlds.length - 1) / 2) * 18000] }));
+        nodes.push(node({ id: worldId, label: worldName, kind: system.kind, level: "world", parentId: planetId, color: system.color, position: [(worldIndex - (worlds.length - 1) / 2) * 56000, Math.sin(worldIndex * 1.4) * 20000, -146000 - Math.abs(worldIndex - (worlds.length - 1) / 2) * 10000] }));
         const districtId = `${worldId}-district`;
         const buildingId = `${worldId}-building`;
-        nodes.push(node({ id: districtId, label: `${worldName} District`, kind: system.kind, level: "district", parentId: worldId, color: system.color, position: [0, -28000, -310000] }));
-        nodes.push(node({ id: buildingId, label: `${worldName} Archive`, kind: system.kind, level: "building", parentId: districtId, color: system.color, position: [62000, -18000, -285000] }));
-        nodes.push(node({ id: `${worldId}-workspace`, label: `${worldName} Workspace`, kind: "workspace", level: "workspace", parentId: buildingId, color: "#8fffe0", position: [0, 0, -260000] }));
+        nodes.push(node({ id: districtId, label: `${worldName} District`, kind: system.kind, level: "district", parentId: worldId, color: system.color, position: [0, -18000, -124000] }));
+        nodes.push(node({ id: buildingId, label: `${worldName} Archive`, kind: system.kind, level: "building", parentId: districtId, color: system.color, position: [32000, -11000, -112000] }));
+        nodes.push(node({ id: `${worldId}-workspace`, label: `${worldName} Workspace`, kind: "workspace", level: "workspace", parentId: buildingId, color: "#8fffe0", position: [0, 0, -98000] }));
       });
     });
   }
@@ -86,7 +95,7 @@ function documentRegion(document: { path: string; title: string }, index: number
   const columns = Math.max(4, Math.ceil(Math.sqrt(total)));
   const column = index % columns;
   const row = Math.floor(index / columns);
-  return node({ id: `memory-document-${slug(document.path)}`, label: document.title, eyebrow: "Memory document", description: `Open ${document.path} inside the UIOS Memory reader.`, kind: "memory", level: "document", parentId: "memory", color: index % 3 === 0 ? "#b7f4ff" : "#80a8ff", position: [(column - (columns - 1) / 2) * 92000, (row % 2 ? 1 : -1) * (52000 + row * 9000), -520000 - row * 72000], source: "structural", action: "open-document", documentPath: document.path });
+  return node({ id: `memory-document-${slug(document.path)}`, label: document.title, eyebrow: "Memory document", description: `Open ${document.path} inside the UIOS Memory reader.`, kind: "memory", level: "document", parentId: "memory", color: index % 3 === 0 ? "#b7f4ff" : "#80a8ff", position: [(column - (columns - 1) / 2) * 38000, (row % 2 ? 1 : -1) * (30000 + row * 5200), -178000 - row * 30000], source: "structural", action: "open-document", documentPath: document.path });
 }
 
 function providerRegion(id: string, index: number, total: number): UniverseRegion {
@@ -128,7 +137,7 @@ export function UniverseManager({ children }: { children: ReactNode }) {
         const existing = generated.get(id);
         if (existing) return existing;
         const angle = index / nouns.length * Math.PI * 2 + 0.4;
-        const child = node({ id, label: `${noun} ${nextLevel === "network" ? "Network" : nextLevel === "graph" ? "Graph" : "Document"}`, eyebrow: "Fractal intelligence", description: "A procedurally streamed universe repeating the Fabric of Intelligence at another semantic scale.", kind: parent.kind, level: nextLevel, parentId: parent.id, color: parent.color, position: [Math.cos(angle) * 260000, Math.sin(angle * 1.7) * 50000, -360000 + Math.sin(angle) * 120000], source: parent.source });
+        const child = node({ id, label: `${noun} ${nextLevel === "network" ? "Network" : nextLevel === "graph" ? "Graph" : "Document"}`, eyebrow: "Fractal intelligence", description: "A procedurally streamed universe repeating the Fabric of Intelligence at another semantic scale.", kind: parent.kind, level: nextLevel, parentId: parent.id, color: parent.color, position: [Math.cos(angle) * 82000, Math.sin(angle * 1.7) * 28000, -142000 + Math.sin(angle) * 52000], source: parent.source });
         generated.set(id, child);
         return child;
       });

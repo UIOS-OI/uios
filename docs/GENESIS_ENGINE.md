@@ -32,8 +32,8 @@ A region is not a mesh sharing one permanent scene graph with every other region
 - Scale is communicated through foreground spores, neural midground, intelligence rivers, distant structures, and extreme-background megastructures.
 - Loading is represented as ignition and assembly, never as a progress bar.
 - The living universe is the default first frame. The cinematic intro is opt-in so stalled media playback can never mask the operating surface with a black screen; a CSS nebula remains beneath the transparent canvas as a WebGL-safe visibility floor.
-- A DOM-based visual navigation constellation sits above WebGL for the Root and Memory layers, guaranteeing a visible Core and clickable galaxy/planet entrances when a browser or GPU returns a black canvas.
-- Planet activation performs a short continuous camera approach before the child cluster manifests in the same scene. Memory's allowlisted files are mirrored as mini gem-planets whose click action opens the in-scene reader without route or page navigation.
+- A CSS nebula remains beneath WebGL as the failure-safe visibility floor, while all navigable galaxies, planets, labels, and artifact gems remain spatially anchored inside the living scene.
+- Planet activation performs a short continuous camera approach before the child cluster manifests in the same scene. Memory's allowlisted files exist as spatial gem-planets whose click action opens the in-scene reader without route or page navigation.
 - Live visual state must come from authenticated, tenant-bound platform evidence. The renderer must not invent provider health, customer activity, security events, or premium entitlements.
 - Reduced-motion, keyboard access, adaptive quality, and a non-WebGL fallback remain launch requirements.
 
@@ -100,8 +100,16 @@ Ambient color, current density, pulse velocity, lighting, and audio respond to t
 
 - Fixed-FOV physical flight through departure, interstellar cruise, orbital insertion, atmospheric entry, and landing.
 - Branch streaming keeps the current ancestry and next destinations resident instead of one local region cluster.
-- Astronomical system coordinates range from hundreds of thousands to more than one million virtual units.
+- Root system coordinates retain astronomical separation while staying within a practical 158,000 to 378,000-unit travel envelope.
 - Remaining: obstacle volumes, interruption-safe replanning, asset manifests, object pools, and unload instrumentation.
+
+### G2.1 — Spatial discovery LOD — foundation complete
+
+- UIOS and its connected systems exist only as atmosphere-bound WebGL structures; fixed screen-space planet controls are removed.
+- Flowing Intelligence Currents connect the Core to each distant system.
+- Every system exposes a rotating orbital content field that strengthens as the camera approaches, previewing the worlds and artifacts within before entry.
+- Every root galaxy opens into a six-planet category cluster with full orbit, pan, zoom, and cursor-directed warp movement across the local coordinate space.
+- Entering a system reveals its independently streamed category planets and, in Memory, clickable repository document gems without leaving the scene.
 
 ### G3 — GPU intelligence rivers
 

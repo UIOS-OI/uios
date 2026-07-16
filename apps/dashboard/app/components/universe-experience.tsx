@@ -2,28 +2,9 @@
 
 import { SceneManager } from "@uios/render-engine";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
-import { type CSSProperties, type FormEvent, useCallback, useEffect, useRef, useState } from "react";
+import { type FormEvent, useCallback, useEffect, useRef, useState } from "react";
 import styles from "./universe-experience.module.css";
 import { useLivingAudio } from "./use-living-audio";
-
-const ROOT_VISUAL_NODES = [
-  { label: "Memory Atmosphere", color: "#bdf7ff", x: 84, y: 23 },
-  { label: "Aegis System", color: "#35c8ff", x: 15, y: 35 },
-  { label: "Router System", color: "#b675ff", x: 36, y: 20 },
-  { label: "Agent Nexus", color: "#ff76c8", x: 12, y: 62 },
-  { label: "Observatory System", color: "#6fd7ff", x: 68, y: 70 },
-  { label: "Forge System", color: "#ffb64f", x: 77, y: 43 },
-  { label: "Marketplace System", color: "#63f0ba", x: 87, y: 67 },
-] as const;
-
-const MEMORY_VISUAL_NODES = [
-  { label: "Engineering Planet", color: "#d8fbff", x: 18, y: 28 },
-  { label: "Policies Planet", color: "#9cecff", x: 9, y: 60 },
-  { label: "Sales Planet", color: "#a9c7ff", x: 34, y: 72 },
-  { label: "HR Planet", color: "#d3b7ff", x: 63, y: 72 },
-  { label: "Finance Planet", color: "#7edfff", x: 78, y: 45 },
-  { label: "Customer Planet", color: "#d8fbff", x: 91, y: 28 },
-] as const;
 
 export function UniverseExperience() {
   const video = useRef<HTMLVideoElement>(null);
@@ -37,38 +18,12 @@ export function UniverseExperience() {
   const [activeZoneLabel, setActiveZoneLabel] = useState("Root Universe");
   const [arrivalNotice, setArrivalNotice] = useState<string | null>(null);
   const [documentReader, setDocumentReader] = useState<{ title: string; path: string; content?: string; error?: string } | null>(null);
-  const [memoryDocuments, setMemoryDocuments] = useState<Array<{ path: string; title: string }>>([]);
   const [intent, setIntent] = useState("");
   const [warpZoom, setWarpZoom] = useState(true);
   const [activityLabel, setActivityLabel] = useState("Listening for intelligence activity");
   const { disable: disableAudio, enable: enableAudio, enabled: audioEnabled } = useLivingAudio(activeRegion);
   const enterUniverse = useCallback(() => setEntered(true), []);
   const travelOutward = useCallback(() => window.dispatchEvent(new Event("uios:navigate-back")), []);
-  const revealVisibleNode = useCallback((label: string) => {
-    window.dispatchEvent(new CustomEvent("uios:intent-reveal", { detail: { query: label } }));
-    setActivityLabel(`Core is revealing: ${label}`);
-  }, []);
-  const openVisibleDocument = useCallback((path: string, title: string) => {
-    window.dispatchEvent(new CustomEvent("uios:open-document", { detail: { path, title } }));
-    setActivityLabel(`Memory is opening: ${title}`);
-  }, []);
-
-  useEffect(() => {
-    const controller = new AbortController();
-    void fetch("/api/universe/topology", { cache: "no-store", signal: controller.signal })
-      .then(async (response) => response.ok ? response.json() as Promise<{ documents?: unknown[] }> : { documents: [] })
-      .then((payload) => {
-        const documents = (payload.documents ?? []).flatMap((value) => {
-          if (!value || typeof value !== "object") return [];
-          const document = value as { path?: unknown; title?: unknown };
-          return typeof document.path === "string" && typeof document.title === "string" ? [{ path: document.path, title: document.title }] : [];
-        });
-        setMemoryDocuments(documents);
-      })
-      .catch(() => undefined);
-    return () => controller.abort();
-  }, []);
-
   useEffect(() => {
     const stored = window.localStorage.getItem("uios.warp-zoom.v1");
     if (stored === "off") setWarpZoom(false);
@@ -180,42 +135,6 @@ export function UniverseExperience() {
     <main className={styles.page}>
       <div className={styles.visibilityField} aria-hidden="true" />
       <SceneManager className={styles.canvas} onPerformanceChange={setPerformance} onRegionChange={handleRegionChange} />
-      <div className={styles.planetAssist} aria-label="Visible universe navigator">
-        <div className={styles.planetAssistCore} aria-hidden="true"><i /><i /><i /></div>
-        {(activeZoneLabel === "Memory Atmosphere" ? MEMORY_VISUAL_NODES : activeZoneLabel === "Root Universe" ? ROOT_VISUAL_NODES : []).map((node) => (
-          <button
-            aria-label={`Reveal ${node.label}`}
-            className={styles.assistPlanet}
-            key={node.label}
-            onClick={() => revealVisibleNode(node.label)}
-            style={{ "--planet-color": node.color, "--planet-x": `${node.x}%`, "--planet-y": `${node.y}%` } as CSSProperties}
-            type="button"
-          >
-            <i /><span>{node.label}</span>
-          </button>
-        ))}
-        {activeZoneLabel === "Memory Atmosphere" ? memoryDocuments.map((document, index) => {
-          const ring = Math.floor(index / 12);
-          const ringStart = ring * 12;
-          const ringCount = Math.min(12, memoryDocuments.length - ringStart);
-          const angle = (index - ringStart) / Math.max(1, ringCount) * Math.PI * 2 - Math.PI / 2;
-          const x = 50 + Math.cos(angle) * (18 + ring * 9);
-          const y = 53 + Math.sin(angle) * (14 + ring * 7);
-          return (
-            <button
-              aria-label={`Open ${document.title}`}
-              className={styles.assistDocument}
-              key={document.path}
-              onClick={() => openVisibleDocument(document.path, document.title)}
-              style={{ "--document-x": `${x}%`, "--document-y": `${y}%` } as CSSProperties}
-              title={`Open ${document.title}`}
-              type="button"
-            >
-              <i /><span>{document.title}</span>
-            </button>
-          );
-        }) : null}
-      </div>
 
       <header className={styles.statusRail}>
         <a href="/" className={styles.identity} aria-label="UIOS intelligence universe">

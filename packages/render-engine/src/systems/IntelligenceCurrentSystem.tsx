@@ -62,7 +62,7 @@ export function IntelligenceCurrentSystem() {
     const material = new THREE.LineBasicMaterial({
       blending: THREE.AdditiveBlending,
       depthWrite: false,
-      opacity: 0.22,
+      opacity: 0.32,
       transparent: true,
       vertexColors: true,
     });
@@ -107,7 +107,7 @@ export function IntelligenceCurrentSystem() {
       const pointerDistance = Math.hypot(ndc.x - interaction.pointer.current.x, ndc.y - interaction.pointer.current.y);
       const localAwareness = Math.max(0, 1 - pointerDistance / 0.55) * interaction.pointerPresence.current;
       const material = lines[currentIndex]?.material as THREE.LineBasicMaterial | undefined;
-      if (material) material.opacity = 0.2 + localAwareness * 0.42 + activity.activityLevel.current * 0.26;
+      if (material) material.opacity = 0.3 + localAwareness * 0.42 + activity.activityLevel.current * 0.26;
       for (let packet = 0; packet < PACKETS_PER_CURRENT; packet += 1) {
         const progress = (elapsed * (0.025 + packet * 0.004) * flowSpeed + current.phase + packet / PACKETS_PER_CURRENT) % 1;
         const point = current.curve.getPointAt(progress);
@@ -152,7 +152,7 @@ export function IntelligenceCurrentSystem() {
     <group>
       {lines.map((line, index) => <primitive key={index} object={line} />)}
       <points ref={packets} geometry={packetGeometry} frustumCulled={false}>
-        <pointsMaterial size={9} sizeAttenuation vertexColors transparent opacity={0.92} blending={THREE.AdditiveBlending} depthWrite={false} />
+        <pointsMaterial size={12} sizeAttenuation vertexColors transparent opacity={0.96} blending={THREE.AdditiveBlending} depthWrite={false} />
       </points>
       <points ref={activityPackets} geometry={activityGeometry} frustumCulled={false}>
         <pointsMaterial size={22} sizeAttenuation vertexColors transparent opacity={1} blending={THREE.AdditiveBlending} depthWrite={false} />

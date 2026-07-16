@@ -38,13 +38,13 @@ The `/` experience is a continuous R3F world, not a set of page transitions. The
 
 ### World topology
 
-`UniverseManager` provides Aegis, Memory, Router, Agent Nexus, Observatory, Forge, and Marketplace as separate star systems positioned 280,000 to 1,440,000 virtual units from origin. Nodes use parent-relative coordinates in a flat data index and render as a nested scene graph: System → Planet → World → District → Building → Workspace. Memory owns departmental planets; authenticated providers enter as Router provider worlds. Structural destinations describe product architecture and do not claim that an external service is connected.
+`UniverseManager` provides Aegis, Memory, Router, Agent Nexus, Observatory, Forge, and Marketplace as separate star systems positioned 158,000 to 378,000 virtual units from origin. Nodes use parent-relative coordinates in a flat data index and render as a nested scene graph: System → Planet → World → District → Building → Workspace. Every system owns a six-planet category cluster, Memory owns departmental planets, and authenticated providers enter as Router provider worlds. Structural destinations describe product architecture and do not claim that an external service is connected.
 
 The manager calls the same-origin `/api/universe/topology` boundary. That route resolves the signed workspace or API-key tenant on the server; the client does not send or trust a tenant header. In an authenticated workspace, registered provider IDs can become workspace-sourced provider destinations and the tenant's memory record count can influence future knowledge-density rendering. An unauthorized public visitor receives an empty workspace topology and sees only the structural universe; failed requests do not fabricate provider or memory state.
 
 ### Navigation and interaction
 
-Regions occupy positions hundreds to thousands of world units apart. Selecting a spatial signal starts a GSAP camera flight from the camera's current position, with duration derived from travel distance and eased acceleration/deceleration. Orbit controls are disabled during the flight and restored on arrival. A region interface is mounted only after the flight completes.
+Regions occupy distinct but practical astronomical coordinate spaces. Selecting a spatial signal starts a GSAP camera flight from the camera's current position, with duration derived from travel distance and eased acceleration/deceleration. Orbit controls are disabled during the flight and restored on arrival. A region interface is mounted only after the flight completes.
 
 Pointer position and interaction intensity live in refs and are consumed by render tasks and shader uniforms. This keeps high-frequency input out of React state. Nearby particles bend and brighten in response, while regions breathe, rotate, and intensify on hover or selection.
 
@@ -74,9 +74,7 @@ The `uios.warp-zoom.v1` preference switches OrbitControls between warp speed (`2
 
 The homepage mounts the universe immediately. Cinematic playback is explicitly user-triggered, and the transparent WebGL canvas sits above a CSS nebula visibility floor so media stalls, shader compilation failures, or context recovery cannot present an all-black first screen.
 
-The visibility floor also includes a DOM navigation constellation above the canvas for Root and Memory. It mirrors the primary entrances, dispatches the same intent-navigation events, and remains keyboard accessible, so GPU failure does not remove the user's ability to see or enter the major worlds.
-
-Direct planet activation uses a sub-second camera approach toward the selected entrance, then rebases the same canvas to the child cluster. The Memory fallback constellation additionally mirrors the safe document catalog as clickable mini gem-planets; document activation opens the existing reader overlay and never changes routes.
+Navigation remains inside the spatial fabric: there is no fixed screen-space planet constellation competing with the real scene. Each 3D system carries an orbiting content field whose density becomes clearer with approach, while its anchored semantic label and enlarged raycast volume remain clickable. Direct planet activation uses a sub-second camera approach toward the selected entrance, then rebases the same canvas to the child cluster. Memory document gems open the existing reader overlay and never change routes.
 
 The Memory system also receives an allowlisted repository-document catalog from `/api/universe/topology`. Only selected root product documents and `.md`/`.txt` files under `docs/` become clickable artifacts. `/api/universe/document` revalidates the catalog path before reading content, caps the response size, and never exposes environment files, databases, source trees, or arbitrary user-supplied filesystem paths. Artifacts open in a read-only overlay without changing universe depth.
 

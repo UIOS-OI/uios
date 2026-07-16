@@ -22,6 +22,7 @@
 | 11 | Genesis v2 Recursive Universes | Treat every destination as a portal into an independently centered universe, preload the next universe, unload the previous after tunnel arrival, add universe-specific environments, and continue procedurally through Document → Graph → Token Network. | M10 | FOUNDATION DONE |
 | 12 | Reality Engine v2 | Make routine navigation an instant Core-led reveal, reserve tunnels for milestone events, add intent-directed manifestation, Memory document artifacts, proximity explanations, and a safe read-only document viewer. | M11 | FOUNDATION DONE |
 | 13 | Galaxy-scale knowledge worlds | Render every navigable node as a luminous galaxy entrance, brighten the Core and environments, and present Memory as an atmosphere of massive file-planets and geometric knowledge gems. | M12 | FOUNDATION DONE |
+| 14 | Spatial discovery LOD | Remove fixed planet controls, compress impractical travel distances, reveal orbiting contents as the camera approaches, and keep navigation anchored to the living 3D fabric. | M13 | FOUNDATION DONE |
 
 ## Code Layout
 - apps/dashboard/app/lib/state-store.ts - Persistence
