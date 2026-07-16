@@ -110,29 +110,107 @@ function seedFromId(id: string) {
   return (value >>> 0) / 4294967295;
 }
 
+function SacredGeometryShell({ color, id, seed }: { color: string; id: string; seed: number }) {
+  const shell = useRef<THREE.Group>(null);
+  const inner = useRef<THREE.Group>(null);
+  const variant = Math.min(3, Math.floor(seed * 4));
+  const palette = useMemo(() => {
+    const source = new THREE.Color(color);
+    const hsl = { h: 0, s: 0, l: 0 };
+    source.getHSL(hsl);
+    const neon = new THREE.Color().setHSL((hsl.h + seed * 0.08) % 1, 0.92, 0.54);
+    const accent = new THREE.Color("#763cff").lerp(new THREE.Color("#29a7ff"), seed * 0.72);
+    return { accent: accent.getStyle(), neon: neon.getStyle() };
+  }, [color, seed]);
+  const lattice = useMemo(() => Array.from({ length: 18 }, (_, index) => {
+    const y = 1 - index / 17 * 2;
+    const radius = Math.sqrt(Math.max(0, 1 - y * y));
+    const angle = index * Math.PI * (3 - Math.sqrt(5));
+    return [Math.cos(angle) * radius * 1.28, y * 1.28, Math.sin(angle) * radius * 1.28] as [number, number, number];
+  }), []);
+
+  useRenderTask(`sacred-planet-${id}`, (_state, delta, elapsed) => {
+    if (shell.current) {
+      shell.current.rotation.y += delta * (0.08 + seed * 0.05);
+      shell.current.rotation.z -= delta * 0.025;
+      shell.current.scale.setScalar(1 + Math.sin(elapsed * 0.7 + seed * 12) * 0.025);
+    }
+    if (inner.current) {
+      inner.current.rotation.x -= delta * 0.07;
+      inner.current.rotation.y += delta * 0.12;
+    }
+  }, 3);
+
+  return (
+    <group ref={shell}>
+      <mesh scale={1.56} rotation={[seed * 0.7, seed * 1.4, 0.22]}>
+        <icosahedronGeometry args={[1, 2]} />
+        <meshBasicMaterial color={palette.accent} wireframe transparent opacity={0.46} blending={THREE.AdditiveBlending} depthWrite={false} />
+      </mesh>
+      <mesh scale={1.38} rotation={[-0.32, 0.5 + seed, 0.18]}>
+        <dodecahedronGeometry args={[1, 1]} />
+        <meshBasicMaterial color={palette.neon} wireframe transparent opacity={0.3} blending={THREE.AdditiveBlending} depthWrite={false} />
+      </mesh>
+
+      <group ref={inner}>
+        {variant === 0 ? (
+          <>
+            <mesh scale={1.12} rotation={[0.7, 0.22, seed]}><octahedronGeometry args={[1, 2]} /><meshBasicMaterial color="#ad8cff" wireframe transparent opacity={0.56} blending={THREE.AdditiveBlending} /></mesh>
+            <mesh scale={0.78} rotation={[-0.4, 0.7, 0.3]}><icosahedronGeometry args={[1, 1]} /><meshBasicMaterial color={palette.accent} wireframe transparent opacity={0.72} blending={THREE.AdditiveBlending} /></mesh>
+          </>
+        ) : null}
+
+        {variant === 1 ? [0.38, 0.62, 0.86, 1.1, 1.34].map((radius, index) => (
+          <mesh key={radius} rotation={[Math.PI / 2, index * 0.12, seed * 0.4]}>
+            <torusGeometry args={[radius, 0.018 + index * 0.003, 6, 96]} />
+            <meshBasicMaterial color={index % 2 ? palette.accent : palette.neon} transparent opacity={0.68 - index * 0.085} blending={THREE.AdditiveBlending} depthWrite={false} />
+          </mesh>
+        )) : null}
+
+        {variant === 2 ? lattice.map((position, index) => (
+          <mesh key={index} position={position} scale={0.28} rotation={[index * 0.4, index * 0.7, index * 0.2]}>
+            <icosahedronGeometry args={[1, 1]} />
+            <meshBasicMaterial color={index % 3 === 0 ? "#4fdcff" : palette.accent} wireframe transparent opacity={0.58} blending={THREE.AdditiveBlending} depthWrite={false} />
+          </mesh>
+        )) : null}
+
+        {variant === 3 ? Array.from({ length: 9 }, (_, index) => (
+          <mesh key={index} rotation={[index / 9 * Math.PI, index * 0.68 + seed, index * 0.31]}>
+            <torusGeometry args={[1.18 + (index % 3) * 0.1, 0.018, 6, 88]} />
+            <meshBasicMaterial color={index % 2 ? palette.accent : palette.neon} transparent opacity={0.48} blending={THREE.AdditiveBlending} depthWrite={false} />
+          </mesh>
+        )) : null}
+      </group>
+
+      <mesh scale={0.28}>
+        <sphereGeometry args={[1, 32, 24]} />
+        <meshBasicMaterial color="#b69cff" transparent opacity={0.68} blending={THREE.AdditiveBlending} depthWrite={false} />
+      </mesh>
+      <mesh scale={0.68}>
+        <sphereGeometry args={[1, 24, 16]} />
+        <meshBasicMaterial color={palette.accent} transparent opacity={0.12} blending={THREE.AdditiveBlending} depthWrite={false} />
+      </mesh>
+    </group>
+  );
+}
+
 function PlanetBody({ color, id }: { color: string; id: string }) {
   const seed = useMemo(() => seedFromId(id), [id]);
   const surfaceUniforms = useMemo(() => ({ uColor: { value: new THREE.Color(color) }, uSeed: { value: seed } }), [color, seed]);
   const atmosphereUniforms = useMemo(() => ({ uColor: { value: new THREE.Color(color).lerp(new THREE.Color("#bdeeff"), 0.55) } }), [color]);
-  const ringed = seed > 0.58;
 
   return (
     <group rotation={[0.08 + seed * 0.22, seed * Math.PI * 2, -0.12 + seed * 0.28]}>
-      <mesh castShadow receiveShadow>
+      <mesh scale={0.76} castShadow receiveShadow>
         <sphereGeometry args={[1.16, 64, 48]} />
         <shaderMaterial vertexShader={PLANET_VERTEX_SHADER} fragmentShader={PLANET_FRAGMENT_SHADER} uniforms={surfaceUniforms} />
       </mesh>
-      <mesh scale={1.055}>
+      <mesh scale={0.82}>
         <sphereGeometry args={[1.16, 48, 32]} />
         <shaderMaterial vertexShader={ATMOSPHERE_VERTEX_SHADER} fragmentShader={ATMOSPHERE_FRAGMENT_SHADER} uniforms={atmosphereUniforms} transparent blending={THREE.AdditiveBlending} depthWrite={false} side={THREE.BackSide} />
       </mesh>
-      {ringed ? (
-        <mesh rotation={[Math.PI / 2, 0, seed * 0.6]}>
-          <ringGeometry args={[1.55, 2.45, 128]} />
-          <meshStandardMaterial color={color} emissive={color} emissiveIntensity={0.08} metalness={0.08} roughness={0.82} transparent opacity={0.38} side={THREE.DoubleSide} depthWrite={false} />
-        </mesh>
-      ) : null}
-      <pointLight color={color} intensity={18000} distance={5.5} decay={2} />
+      <SacredGeometryShell color={color} id={id} seed={seed} />
+      <pointLight color={color} intensity={10000} distance={5.5} decay={2} />
     </group>
   );
 }

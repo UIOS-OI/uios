@@ -129,6 +129,12 @@ Ambient color, current density, pulse velocity, lighting, and audio respond to t
 - Allowlisted blueprints, guides, and repository documents retain their original file paths and appear as clickable gems inside the matching planet.
 - Classification is deterministic and additive, so new files enter the existing hierarchy without flattening or rewriting the repository structure.
 
+### G2.5 — Sacred geometry host worlds — complete
+
+- Nested planets combine a physical inner world with luminous polyhedral, mandala, cellular, or orbital-flower geometry inspired by the supplied orb reference.
+- Outer and inner shells rotate independently, with seeded breathing phases and additive bloom that reveal more structure during close inspection.
+- Archetypes are selected from stable node IDs, allowing future provider, feature, and department planets to join the same language without copied image textures.
+
 ### G3 — GPU intelligence rivers
 
 - GPU spline particles with variable width, branching, merge/split behavior, provider color transitions, and load-driven acceleration.

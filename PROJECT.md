@@ -26,6 +26,7 @@
 | 15 | Procedural astronomical realism | Generate deterministic planetary terrain, cloud bands, atmospheres, rings, stellar temperatures, galactic dust, and multi-depth star fields from topology IDs so visual variety grows with the platform. | M14 | FOUNDATION DONE |
 | 16 | NASA camera motion | Add a cancellable deep-space landing push, preserve user dolly distance at Root, and keep inertial zoom, orbit, and pan active after every coordinate-space rebase. | M15 | DONE |
 | 17 | Hosted knowledge planets | Preserve repository file paths while deterministically placing each Memory artifact beneath its Policies, Engineering, Sales, HR, Finance, or Customer host planet. | M16 | DONE |
+| 18 | Sacred geometry host worlds | Translate the nested-orb reference into deterministic crystalline, mandala, cellular-lattice, and orbital-flower planet shells with luminous cores and independent internal rotation. | M17 | DONE |
 
 ## Code Layout
 - apps/dashboard/app/lib/state-store.ts - Persistence
