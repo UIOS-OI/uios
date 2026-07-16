@@ -39,6 +39,15 @@ export {
 } from "./systems/InteractionSystem";
 export { LightingSystem } from "./systems/LightingSystem";
 export { IntelligenceCurrentSystem } from "./systems/IntelligenceCurrentSystem";
+export { FluidConnectionSystem } from "./systems/FluidConnectionSystem";
+export { SolarSystem, type SolarSystemProps } from "./systems/SolarSystem";
+export { CelestialInfoPanel, type CelestialInfoPanelProps } from "./systems/CelestialInfoPanel";
+export {
+  GalaxyManager,
+  useGalaxyTopology,
+  type CelestialBody,
+  type GalaxyDescriptor,
+} from "./engine/UniverseManager";
 export { NeuralNetworkSystem, type NeuralNetworkSystemProps } from "./systems/NeuralNetworkSystem";
 export { ParticleSystem, type ParticleSystemProps } from "./systems/ParticleSystem";
 export { RegionSystem, type RegionSystemProps, type RenderRegion } from "./systems/RegionSystem";

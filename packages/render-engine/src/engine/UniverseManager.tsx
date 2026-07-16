@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, type ReactNode, useContext, useEffect, useMemo, useState } from "react";
+import { createContext, type ReactNode, useContext, useEffect, useMemo, useRef, useState } from "react";
 
 export type UniverseRegionKind = "aegis" | "memory" | "router" | "agents" | "observatory" | "forge" | "marketplace" | "workspace" | "provider";
 export type SpatialLevel = "system" | "planet" | "world" | "district" | "building" | "workspace" | "document" | "graph" | "network";
@@ -31,6 +31,44 @@ export type UniverseTopology = {
   pathTo: (id: string) => UniverseRegion[];
   absolutePositionOf: (id: string) => [number, number, number];
 };
+
+export type CelestialBody = {
+  id: string;
+  parentId: string | null;
+  label: string;
+  kind: "planet" | "moon" | "asteroid";
+  description: string;
+  size: number;
+  orbitRadius: number;
+  orbitSpeed: number;
+  orbitPhase: number;
+  orbitInclination: number;
+  documentPath?: string;
+  contentType: "file" | "folder" | "memory" | "document";
+  addedAt: string;
+  color: string;
+};
+
+export type GalaxyDescriptor = {
+  id: string;
+  label: string;
+  color: string;
+  position: [number, number, number];
+  hostPlanet: {
+    id: string;
+    label: string;
+    description: string;
+    size: number;
+  };
+  bodies: CelestialBody[];
+};
+
+type GalaxyTopologyState = {
+  galaxies: GalaxyDescriptor[];
+  newArrivals: Set<string>;
+};
+
+const GalaxyContext = createContext<GalaxyTopologyState>({ galaxies: [], newArrivals: new Set() });
 
 const SYSTEMS: Array<Omit<UniverseRegion, "level" | "parentId" | "source">> = [
   { id: "memory", label: "Memory Atmosphere", eyebrow: "Living knowledge galaxy", description: "A luminous intelligence atmosphere containing every authorized file, memory, blueprint, and knowledge world.", kind: "memory", color: "#d8fbff", position: [90000, 28000, -158000] },
@@ -183,3 +221,53 @@ export function UniverseManager({ children }: { children: ReactNode }) {
 
 export function useUniverseTopology() { return useContext(UniverseContext); }
 export { STRUCTURAL_REGIONS };
+
+function safeGalaxy(value: unknown): value is GalaxyDescriptor {
+  if (!value || typeof value !== "object") return false;
+  const g = value as Record<string, unknown>;
+  return typeof g.id === "string" && typeof g.label === "string" && Array.isArray(g.bodies);
+}
+
+export function GalaxyManager({ children }: { children: ReactNode }) {
+  const [galaxies, setGalaxies] = useState<GalaxyDescriptor[]>([]);
+  const [newArrivals, setNewArrivals] = useState<Set<string>>(new Set());
+  const knownIds = useRef<Set<string>>(new Set());
+
+  const fetchGalaxies = () => {
+    void fetch("/api/universe/topology", { cache: "no-store", credentials: "same-origin" })
+      .then(async (r) => {
+        if (!r.ok) return;
+        const payload = await r.json() as { galaxies?: unknown[] };
+        const parsed = (payload.galaxies ?? []).filter(safeGalaxy);
+        const arrivals = new Set<string>();
+        parsed.forEach((g) =>
+          g.bodies.forEach((b) => {
+            if (!knownIds.current.has(b.id)) {
+              arrivals.add(b.id);
+              knownIds.current.add(b.id);
+            }
+          }),
+        );
+        if (arrivals.size > 0) setNewArrivals(arrivals);
+        setGalaxies(parsed);
+      })
+      .catch(() => undefined);
+  };
+
+  useEffect(() => {
+    fetchGalaxies();
+    const interval = setInterval(fetchGalaxies, 30_000);
+    return () => clearInterval(interval);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  return (
+    <GalaxyContext.Provider value={{ galaxies, newArrivals }}>
+      {children}
+    </GalaxyContext.Provider>
+  );
+}
+
+export function useGalaxyTopology() {
+  return useContext(GalaxyContext);
+}
