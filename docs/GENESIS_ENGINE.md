@@ -111,6 +111,12 @@ Ambient color, current density, pulse velocity, lighting, and audio respond to t
 - Every root galaxy opens into a six-planet category cluster with full orbit, pan, zoom, and cursor-directed warp movement across the local coordinate space.
 - Entering a system reveals its independently streamed category planets and, in Memory, clickable repository document gems without leaving the scene.
 
+### G2.2 — Procedural astronomical realism — foundation complete
+
+- Planet IDs deterministically generate terrain, oceans, clouds, ice caps, gas bands, atmospheric rims, night-side detail, and optional ring systems.
+- Multi-scale stellar fields use varied color temperatures and twinkle rates, while a faint galactic plane and region-colored nebular dust establish realistic depth.
+- Realism is topology-driven rather than texture-bound: newly registered feature, provider, and category nodes automatically receive stable visual identities.
+
 ### G3 — GPU intelligence rivers
 
 - GPU spline particles with variable width, branching, merge/split behavior, provider color transitions, and load-driven acceleration.

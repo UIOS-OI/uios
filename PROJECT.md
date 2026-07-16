@@ -23,6 +23,7 @@
 | 12 | Reality Engine v2 | Make routine navigation an instant Core-led reveal, reserve tunnels for milestone events, add intent-directed manifestation, Memory document artifacts, proximity explanations, and a safe read-only document viewer. | M11 | FOUNDATION DONE |
 | 13 | Galaxy-scale knowledge worlds | Render every navigable node as a luminous galaxy entrance, brighten the Core and environments, and present Memory as an atmosphere of massive file-planets and geometric knowledge gems. | M12 | FOUNDATION DONE |
 | 14 | Spatial discovery LOD | Remove fixed planet controls, compress impractical travel distances, reveal orbiting contents as the camera approaches, and keep navigation anchored to the living 3D fabric. | M13 | FOUNDATION DONE |
+| 15 | Procedural astronomical realism | Generate deterministic planetary terrain, cloud bands, atmospheres, rings, stellar temperatures, galactic dust, and multi-depth star fields from topology IDs so visual variety grows with the platform. | M14 | FOUNDATION DONE |
 
 ## Code Layout
 - apps/dashboard/app/lib/state-store.ts - Persistence

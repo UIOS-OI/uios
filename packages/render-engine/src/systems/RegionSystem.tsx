@@ -31,9 +31,110 @@ const LEVEL_SCALE: Record<SpatialLevel, number> = {
   network: 8000,
 };
 
+const PLANET_VERTEX_SHADER = /* glsl */ `
+  varying vec2 vUv;
+  varying vec3 vNormalView;
+  void main() {
+    vUv = uv;
+    vNormalView = normalize(normalMatrix * normal);
+    gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+  }
+`;
+
+const PLANET_FRAGMENT_SHADER = /* glsl */ `
+  uniform vec3 uColor;
+  uniform float uSeed;
+  varying vec2 vUv;
+  varying vec3 vNormalView;
+
+  float hash(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7)) + uSeed * 19.31) * 43758.5453); }
+  float noise(vec2 p) {
+    vec2 i = floor(p); vec2 f = fract(p); f = f * f * (3.0 - 2.0 * f);
+    return mix(mix(hash(i), hash(i + vec2(1.0, 0.0)), f.x), mix(hash(i + vec2(0.0, 1.0)), hash(i + 1.0), f.x), f.y);
+  }
+  float fbm(vec2 p) {
+    float value = 0.0; float amplitude = 0.52;
+    for (int octave = 0; octave < 5; octave++) { value += noise(p) * amplitude; p = p * 2.03 + 7.13; amplitude *= 0.48; }
+    return value;
+  }
+  void main() {
+    vec2 mapUv = vec2(vUv.x * 5.0, vUv.y * 3.0);
+    float terrain = fbm(mapUv + vec2(uSeed * 0.17, 0.0));
+    float detail = fbm(mapUv * 2.4 + 13.7);
+    float latitude = abs(vUv.y - 0.5) * 2.0;
+    float gasMix = step(0.56, fract(uSeed * 0.731));
+    float bands = 0.5 + 0.5 * sin(vUv.y * 74.0 + terrain * 9.0);
+    vec3 ocean = mix(vec3(0.006, 0.018, 0.045), uColor * 0.24, 0.62);
+    vec3 land = mix(uColor * 0.52, vec3(0.42, 0.48, 0.34), terrain * 0.45);
+    vec3 rocky = mix(ocean, land, smoothstep(0.48, 0.57, terrain + detail * 0.12));
+    vec3 gaseous = mix(uColor * 0.2, uColor * 0.86 + vec3(0.14), bands * 0.58 + terrain * 0.22);
+    vec3 surface = mix(rocky, gaseous, gasMix);
+    float ice = smoothstep(0.72, 0.94, latitude + noise(vec2(vUv.x * 9.0, uSeed)) * 0.18);
+    surface = mix(surface, vec3(0.72, 0.86, 0.94), ice * (1.0 - gasMix * 0.65));
+    float clouds = smoothstep(0.64, 0.78, fbm(mapUv * 1.7 + vec2(23.0, uSeed))) * (1.0 - gasMix * 0.55);
+    surface = mix(surface, vec3(0.88, 0.94, 1.0), clouds * 0.42);
+    vec3 lightDirection = normalize(vec3(-0.55, 0.48, 0.72));
+    float diffuse = max(0.0, dot(normalize(vNormalView), lightDirection));
+    float nightGlow = pow(max(0.0, 1.0 - diffuse), 4.0) * smoothstep(0.58, 0.78, detail) * (1.0 - gasMix) * 0.12;
+    float rim = pow(1.0 - max(0.0, dot(normalize(vNormalView), vec3(0.0, 0.0, 1.0))), 3.0);
+    vec3 color = surface * (0.075 + diffuse * 1.12) + uColor * nightGlow + uColor * rim * 0.2;
+    gl_FragColor = vec4(color, 1.0);
+  }
+`;
+
+const ATMOSPHERE_VERTEX_SHADER = /* glsl */ `
+  varying vec3 vNormalView;
+  void main() {
+    vNormalView = normalize(normalMatrix * normal);
+    gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+  }
+`;
+
+const ATMOSPHERE_FRAGMENT_SHADER = /* glsl */ `
+  uniform vec3 uColor;
+  varying vec3 vNormalView;
+  void main() {
+    float fresnel = pow(1.0 - abs(dot(normalize(vNormalView), vec3(0.0, 0.0, 1.0))), 3.4);
+    gl_FragColor = vec4(uColor, fresnel * 0.42);
+  }
+`;
+
 function seeded(index: number, salt: number) {
   const value = Math.sin(index * 17.17 + salt * 91.73) * 43758.5453;
   return value - Math.floor(value);
+}
+
+function seedFromId(id: string) {
+  let value = 2166136261;
+  for (let index = 0; index < id.length; index += 1) value = Math.imul(value ^ id.charCodeAt(index), 16777619);
+  return (value >>> 0) / 4294967295;
+}
+
+function PlanetBody({ color, id }: { color: string; id: string }) {
+  const seed = useMemo(() => seedFromId(id), [id]);
+  const surfaceUniforms = useMemo(() => ({ uColor: { value: new THREE.Color(color) }, uSeed: { value: seed } }), [color, seed]);
+  const atmosphereUniforms = useMemo(() => ({ uColor: { value: new THREE.Color(color).lerp(new THREE.Color("#bdeeff"), 0.55) } }), [color]);
+  const ringed = seed > 0.58;
+
+  return (
+    <group rotation={[0.08 + seed * 0.22, seed * Math.PI * 2, -0.12 + seed * 0.28]}>
+      <mesh castShadow receiveShadow>
+        <sphereGeometry args={[1.16, 64, 48]} />
+        <shaderMaterial vertexShader={PLANET_VERTEX_SHADER} fragmentShader={PLANET_FRAGMENT_SHADER} uniforms={surfaceUniforms} />
+      </mesh>
+      <mesh scale={1.055}>
+        <sphereGeometry args={[1.16, 48, 32]} />
+        <shaderMaterial vertexShader={ATMOSPHERE_VERTEX_SHADER} fragmentShader={ATMOSPHERE_FRAGMENT_SHADER} uniforms={atmosphereUniforms} transparent blending={THREE.AdditiveBlending} depthWrite={false} side={THREE.BackSide} />
+      </mesh>
+      {ringed ? (
+        <mesh rotation={[Math.PI / 2, 0, seed * 0.6]}>
+          <ringGeometry args={[1.55, 2.45, 128]} />
+          <meshStandardMaterial color={color} emissive={color} emissiveIntensity={0.08} metalness={0.08} roughness={0.82} transparent opacity={0.38} side={THREE.DoubleSide} depthWrite={false} />
+        </mesh>
+      ) : null}
+      <pointLight color={color} intensity={18000} distance={5.5} decay={2} />
+    </group>
+  );
 }
 
 function GalaxyShell({ color, level }: { color: string; level: SpatialLevel }) {
@@ -123,7 +224,7 @@ function OrbitingContents({ color, id, index, level }: { color: string; id: stri
   );
 }
 
-function RegionGeometry({ kind, color, level, action }: { kind: UniverseRegionKind; color: string; level: SpatialLevel; action?: UniverseRegion["action"] }) {
+function RegionGeometry({ kind, color, id, level, action }: { kind: UniverseRegionKind; color: string; id: string; level: SpatialLevel; action?: UniverseRegion["action"] }) {
   if (level === "system") {
     return <>
       <mesh><sphereGeometry args={[0.72, 48, 32]} /><meshStandardMaterial color="#17355f" emissive={color} emissiveIntensity={1.8} metalness={0.15} roughness={0.12} /></mesh>
@@ -138,6 +239,7 @@ function RegionGeometry({ kind, color, level, action }: { kind: UniverseRegionKi
       {[1.5, 1.85].map((radius, index) => <mesh key={radius} rotation={[Math.PI / 2 + index * 0.55, index * 0.6, 0]}><torusGeometry args={[radius, 0.025, 6, 72]} /><meshBasicMaterial color={color} transparent opacity={0.6 - index * 0.16} blending={THREE.AdditiveBlending} /></mesh>)}
     </>;
   }
+  if (level === "planet") return <PlanetBody color={color} id={id} />;
   if (kind === "workspace") {
     return <>
       <mesh><sphereGeometry args={[0.5, 24, 16]} /><meshStandardMaterial color="#eafff8" emissive={color} emissiveIntensity={0.8} roughness={0.2} /></mesh>
@@ -246,7 +348,7 @@ function RegionDestination({ region, index, renderInterface, children }: { regio
       >
         {region.action === "open-document" ? null : <GalaxyShell color={region.color} level={region.level} />}
         {region.action === "open-document" ? null : <OrbitingContents color={region.color} id={region.id} index={index} level={region.level} />}
-        <RegionGeometry kind={region.kind} color={region.color} level={region.level} action={region.action} />
+        <RegionGeometry kind={region.kind} color={region.color} id={region.id} level={region.level} action={region.action} />
         <mesh
           onPointerOver={(event) => { event.stopPropagation(); interaction.hover(region.id); }}
           onPointerOut={() => interaction.hover(null)}

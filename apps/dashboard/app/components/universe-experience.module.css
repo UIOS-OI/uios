@@ -1,5 +1,5 @@
 .page {
-  background: #071530;
+  background: #030817;
   color: #eef4ff;
   height: 100svh;
   isolation: isolate;
@@ -15,15 +15,15 @@
 
 .visibilityField {
   background:
-    radial-gradient(circle at 50% 52%, rgba(101, 111, 255, .42), transparent 26%),
-    radial-gradient(circle at 18% 28%, rgba(44, 210, 255, .2), transparent 24%),
-    radial-gradient(circle at 82% 68%, rgba(186, 89, 255, .18), transparent 27%),
-    linear-gradient(145deg, #102b61, #091a3f 54%, #102755);
+    radial-gradient(ellipse at 50% 58%, rgba(72, 84, 190, .38), transparent 24%),
+    radial-gradient(ellipse at 14% 24%, rgba(30, 139, 194, .19), transparent 27%),
+    radial-gradient(ellipse at 84% 72%, rgba(110, 48, 154, .16), transparent 29%),
+    linear-gradient(145deg, #071735, #030a1d 54%, #091733);
   inset: 0;
   pointer-events: none;
   position: absolute;
   mix-blend-mode: screen;
-  opacity: .58;
+  opacity: .38;
   z-index: 2;
 }
 
