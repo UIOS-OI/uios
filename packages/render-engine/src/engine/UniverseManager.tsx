@@ -91,11 +91,37 @@ function safeDocument(value: unknown): value is { path: string; title: string } 
   return typeof candidate.path === "string" && /^(?:docs\/|[A-Z0-9_-]+\.md$)/i.test(candidate.path) && typeof candidate.title === "string" && candidate.title.length > 0 && candidate.title.length < 120;
 }
 
-function documentRegion(document: { path: string; title: string }, index: number, total: number): UniverseRegion {
+type MemoryDepartment = "Policies" | "Engineering" | "Sales" | "HR" | "Finance" | "Customer";
+
+const DOCUMENT_DEPARTMENT_RULES: ReadonlyArray<{ department: MemoryDepartment; keywords: readonly string[] }> = [
+  { department: "Policies", keywords: ["compliance", "security", "governance", "incident", "checklist", "policy", "privacy", "terms"] },
+  { department: "Finance", keywords: ["finance", "billing", "usage", "cost", "revenue", "pricing"] },
+  { department: "HR", keywords: ["human-resources", "identity", "team", "people", "employee", "role"] },
+  { department: "Sales", keywords: ["sales", "marketplace", "market", "product", "launch", "roadmap"] },
+  { department: "Customer", keywords: ["customer", "user-journey", "user-interface", "experience", "support", "memory"] },
+];
+
+function documentDepartment(document: { path: string; title: string }): MemoryDepartment {
+  const searchable = `${document.path} ${document.title}`.toLowerCase().replace(/[^a-z0-9]+/g, "-");
+  return DOCUMENT_DEPARTMENT_RULES.find((rule) => rule.keywords.some((keyword) => searchable.includes(keyword)))?.department ?? "Engineering";
+}
+
+function documentRegion(document: { path: string; title: string }, index: number, total: number, department: MemoryDepartment): UniverseRegion {
   const columns = Math.max(4, Math.ceil(Math.sqrt(total)));
   const column = index % columns;
   const row = Math.floor(index / columns);
-  return node({ id: `memory-document-${slug(document.path)}`, label: document.title, eyebrow: "Memory document", description: `Open ${document.path} inside the UIOS Memory reader.`, kind: "memory", level: "document", parentId: "memory", color: index % 3 === 0 ? "#b7f4ff" : "#80a8ff", position: [(column - (columns - 1) / 2) * 38000, (row % 2 ? 1 : -1) * (30000 + row * 5200), -178000 - row * 30000], source: "structural", action: "open-document", documentPath: document.path });
+  return node({ id: `memory-document-${slug(document.path)}`, label: document.title, eyebrow: `${department} file`, description: `Open ${document.path} inside the UIOS Memory reader.`, kind: "memory", level: "document", parentId: `memory-${slug(department)}-planet`, color: index % 3 === 0 ? "#b7f4ff" : "#80a8ff", position: [(column - (columns - 1) / 2) * 36000, (row % 2 ? 1 : -1) * (26000 + row * 4800), -146000 - row * 28000], source: "structural", action: "open-document", documentPath: document.path });
+}
+
+function buildDocumentRegions(documents: Array<{ path: string; title: string }>): UniverseRegion[] {
+  const buckets = new Map<MemoryDepartment, Array<{ path: string; title: string }>>();
+  for (const document of documents) {
+    const department = documentDepartment(document);
+    const bucket = buckets.get(department) ?? [];
+    bucket.push(document);
+    buckets.set(department, bucket);
+  }
+  return [...buckets.entries()].flatMap(([department, files]) => files.map((document, index) => documentRegion(document, index, files.length, department)));
 }
 
 function providerRegion(id: string, index: number, total: number): UniverseRegion {
@@ -125,7 +151,7 @@ export function UniverseManager({ children }: { children: ReactNode }) {
   }, []);
 
   const topology = useMemo<UniverseTopology>(() => {
-    const regions = [...STRUCTURAL_REGIONS, ...providers.map((id, index) => providerRegion(id, index, providers.length)), ...documents.map((document, index) => documentRegion(document, index, documents.length))];
+    const regions = [...STRUCTURAL_REGIONS, ...providers.map((id, index) => providerRegion(id, index, providers.length)), ...buildDocumentRegions(documents)];
     const byId = new Map(regions.map((region) => [region.id, region]));
     const generated = new Map<string, UniverseRegion>();
     const nodeById = (id: string | null) => id ? byId.get(id) ?? generated.get(id) : undefined;

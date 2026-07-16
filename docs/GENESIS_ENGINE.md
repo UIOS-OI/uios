@@ -123,6 +123,12 @@ Ambient color, current density, pulse velocity, lighting, and audio respond to t
 - User input cancels the camera director immediately and preserves the current position instead of snapping back to a home distance.
 - Root and every arrived zone retain cursor-directed wheel/pinch zoom, orbit, and right-drag pan across their full streamed coordinate space.
 
+### G2.4 — Hosted knowledge planets — complete
+
+- Memory remains the solar system; Policies, Engineering, Sales, HR, Finance, and Customer remain its host planets.
+- Allowlisted blueprints, guides, and repository documents retain their original file paths and appear as clickable gems inside the matching planet.
+- Classification is deterministic and additive, so new files enter the existing hierarchy without flattening or rewriting the repository structure.
+
 ### G3 — GPU intelligence rivers
 
 - GPU spline particles with variable width, branching, merge/split behavior, provider color transitions, and load-driven acceleration.
