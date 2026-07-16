@@ -6,7 +6,10 @@ export const crystalVertexShader = /* glsl */ `
 
   void main() {
     vNormal = normalize(normalMatrix * normal);
-    float displacement = sin(position.y * 5.0 + uTime * 1.8) * 0.035 * uEnergy;
+    float growth = sin(position.y * 5.0 + uTime * 1.8)
+      + sin(position.x * 8.7 - uTime * 1.13) * 0.48
+      + cos(position.z * 11.3 + uTime * 0.71) * 0.31;
+    float displacement = growth * 0.024 * uEnergy;
     vec3 transformed = position + normal * displacement;
     vPosition = transformed;
     gl_Position = projectionMatrix * modelViewMatrix * vec4(transformed, 1.0);

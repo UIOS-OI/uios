@@ -1,6 +1,7 @@
 "use client";
 
 import { FormEvent, useState } from "react";
+import { emitUniverseActivity } from "../lib/universe-events";
 
 export function UiosPlayground() {
   const [prompt, setPrompt] = useState("");
@@ -12,6 +13,7 @@ export function UiosPlayground() {
     if (!prompt.trim() || status === "streaming") return;
     setAnswer("");
     setStatus("streaming");
+    emitUniverseActivity("chat.request", "start", ["workspace", "aegis", "router", "core"], 0.82);
     try {
       const response = await fetch("/api/chat", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ messages: [{ role: "user", content: prompt }] }) });
       if (!response.ok || !response.body) throw new Error((await response.json().catch(() => null))?.error ?? "UIOS could not reach the model gateway.");
@@ -32,9 +34,11 @@ export function UiosPlayground() {
         }
       }
       setStatus("idle");
+      emitUniverseActivity("chat.request", "complete", ["core", "router", "workspace"], 0.9);
     } catch (error) {
       setAnswer(error instanceof Error ? error.message : "UIOS request failed.");
       setStatus("error");
+      emitUniverseActivity("chat.request", "error", ["router", "aegis", "workspace"], 0.78);
     }
   }
 

@@ -3,7 +3,14 @@ import path from "node:path";
 
 const nextConfig: NextConfig = {
   typedRoutes: true,
+  experimental: {
+    cpus: 2,
+  },
   outputFileTracingRoot: path.resolve(__dirname, "../.."),
+  outputFileTracingIncludes: {
+    "/api/universe/document": ["../../docs/**/*", "../../*.md"],
+    "/api/universe/topology": ["../../docs/**/*", "../../*.md"],
+  },
   async headers() {
     const securityHeaders = [
         { key: "X-Content-Type-Options", value: "nosniff" },

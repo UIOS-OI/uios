@@ -1,9 +1,7 @@
-import { IntelligenceUniverse } from "./components/cinematic-fabric";
+import { UniverseExperience } from "./components/universe-experience";
 
 export default function HomePage() {
   return (
-    <main className="cinematic-page">
-      <IntelligenceUniverse />
-    </main>
+    <UniverseExperience />
   );
 }

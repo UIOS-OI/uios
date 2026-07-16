@@ -1,11 +1,17 @@
 "use client";
 
-import { useMemo, useRef } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import * as THREE from "three";
+import { usePerformanceBudget } from "../engine/PerformanceManager";
 import { useRenderTask } from "../engine/RenderLoop";
 import { pulseFragmentShader, pulseVertexShader } from "../shaders/Pulse";
 
-export type NeuralNetworkSystemProps = { nodes?: number; connectionDistance?: number };
+export type NeuralNetworkSystemProps = {
+  nodes?: number;
+  connectionDistance?: number;
+  position?: [number, number, number];
+  worldScale?: number;
+};
 
 function nodePosition(index: number, count: number) {
   const golden = Math.PI * (3 - Math.sqrt(5));
@@ -15,8 +21,9 @@ function nodePosition(index: number, count: number) {
   return new THREE.Vector3(Math.cos(theta) * radius * 3.5, y * 2.6, Math.sin(theta) * radius * 3.5);
 }
 
-export function NeuralNetworkSystem({ nodes = 42, connectionDistance = 1.55 }: NeuralNetworkSystemProps) {
+export function NeuralNetworkSystem({ nodes = 120, connectionDistance = 0.9, position = [0, 0, -900], worldScale = 310 }: NeuralNetworkSystemProps) {
   const material = useRef<THREE.ShaderMaterial>(null);
+  const budget = usePerformanceBudget();
   const geometry = useMemo(() => {
     const positions = Array.from({ length: nodes }, (_, index) => nodePosition(index, nodes));
     const segments: number[] = [];
@@ -46,12 +53,17 @@ export function NeuralNetworkSystem({ nodes = 42, connectionDistance = 1.55 }: N
     [],
   );
 
+  useEffect(() => {
+    const vertices = geometry.getAttribute("position").count;
+    geometry.setDrawRange(0, Math.max(2, Math.floor(vertices * budget.networkScale / 2) * 2));
+  }, [budget.networkScale, geometry]);
+
   useRenderTask("neural-network", (_state, _delta, elapsed) => {
     if (material.current) material.current.uniforms.uTime.value = elapsed;
   }, 1);
 
   return (
-    <lineSegments geometry={geometry}>
+    <lineSegments geometry={geometry} position={position} scale={worldScale}>
       <shaderMaterial
         ref={material}
         vertexShader={pulseVertexShader}

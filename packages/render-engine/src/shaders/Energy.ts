@@ -1,16 +1,22 @@
 export const energyVertexShader = /* glsl */ `
   uniform float uTime;
   uniform float uPixelRatio;
+  uniform vec2 uPointer;
+  uniform float uInteraction;
+  uniform float uIgnition;
   attribute float aScale;
   varying float vAlpha;
 
   void main() {
     vec3 transformed = position;
     transformed.y += sin(uTime * 0.75 + position.x * 1.6) * 0.08;
+    transformed *= smoothstep(0.04, 1.0, uIgnition);
+    float pointerField = exp(-length(transformed.xy - uPointer * 2.8) * 0.5);
+    transformed.xy += normalize(transformed.xy - uPointer * 2.8 + vec2(0.001)) * pointerField * uInteraction * 0.22;
     vec4 viewPosition = modelViewMatrix * vec4(transformed, 1.0);
     gl_Position = projectionMatrix * viewPosition;
-    gl_PointSize = aScale * uPixelRatio * (20.0 / -viewPosition.z);
-    vAlpha = 0.45 + 0.45 * sin(uTime * 1.7 + aScale * 2.1);
+    gl_PointSize = clamp(aScale * uPixelRatio * (1400.0 / -viewPosition.z), 1.0, 12.0);
+    vAlpha = (0.35 + 0.35 * sin(uTime * 1.7 + aScale * 2.1) + pointerField * uInteraction * 0.55) * uIgnition;
   }
 `;
 

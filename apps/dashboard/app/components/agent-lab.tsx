@@ -1,6 +1,7 @@
 "use client";
 
 import { FormEvent, useState } from "react";
+import { emitUniverseActivity } from "../lib/universe-events";
 
 export function AgentLab() {
   const [prompt, setPrompt] = useState("");
@@ -14,6 +15,7 @@ export function AgentLab() {
     event.preventDefault();
     if (!prompt.trim() || status === "running") return;
     setStatus("running"); setResult("");
+    emitUniverseActivity("agent.run", "start", ["workspace", "aegis", "router", "agents"], 0.9);
     try {
       const response = await fetch("/api/agent/run", {
         method: "POST",
@@ -25,12 +27,14 @@ export function AgentLab() {
       if (!response.ok) throw new Error(body.error ?? "Agent run failed.");
       setResult(`${body.run.output || "Agent completed without a final response."}\n\nSteps: ${body.run.steps} · Tool calls: ${body.run.toolCalls.length}`);
       setStatus("idle");
-    } catch (error) { setResult(error instanceof Error ? error.message : "Agent run failed."); setStatus("error"); }
+      emitUniverseActivity("agent.run", "complete", ["agents", "router", "core", "observatory", "workspace"], 1);
+    } catch (error) { setResult(error instanceof Error ? error.message : "Agent run failed."); setStatus("error"); emitUniverseActivity("agent.run", "error", ["agents", "aegis", "workspace"], 0.86); }
   }
 
   async function saveMemory() {
     if (!memory.trim()) return;
     setMemoryMessage(null);
+    emitUniverseActivity("memory.write", "start", ["workspace", "router", "memory"], 0.72);
     try {
       const response = await fetch("/api/memory", {
         method: "POST",
@@ -41,18 +45,22 @@ export function AgentLab() {
       if (response.ok) {
         setMemory("");
         setMemoryMessage({ kind: "ok", text: "Saved to workspace memory." });
+        emitUniverseActivity("memory.write", "complete", ["memory", "observatory", "workspace"], 0.86);
       } else {
         const body = await response.json().catch(() => ({})) as { error?: string };
         setMemoryMessage({ kind: "error", text: body.error ?? "Memory save failed." });
+        emitUniverseActivity("memory.write", "error", ["memory", "aegis", "workspace"], 0.74);
       }
     } catch (error) {
       setMemoryMessage({ kind: "error", text: error instanceof Error ? error.message : "Memory save failed." });
+      emitUniverseActivity("memory.write", "error", ["memory", "aegis", "workspace"], 0.74);
     }
   }
 
   async function searchMemory() {
     if (!memory.trim()) return;
     setMemoryMessage(null);
+    emitUniverseActivity("memory.read", "start", ["workspace", "router", "memory"], 0.58);
     try {
       const response = await fetch(`/api/memory?q=${encodeURIComponent(memory)}`, {
         signal: AbortSignal.timeout(10_000),
@@ -60,12 +68,15 @@ export function AgentLab() {
       if (!response.ok) {
         const body = await response.json().catch(() => ({})) as { error?: string };
         setMemoryMessage({ kind: "error", text: body.error ?? "Memory search failed." });
+        emitUniverseActivity("memory.read", "error", ["memory", "aegis", "workspace"], 0.62);
         return;
       }
       const body = await response.json();
       setMemoryResults((body.records ?? []).map((record: { content: string }) => record.content));
+      emitUniverseActivity("memory.read", "complete", ["memory", "router", "workspace"], 0.68);
     } catch (error) {
       setMemoryMessage({ kind: "error", text: error instanceof Error ? error.message : "Memory search failed." });
+      emitUniverseActivity("memory.read", "error", ["memory", "aegis", "workspace"], 0.62);
     }
   }
 

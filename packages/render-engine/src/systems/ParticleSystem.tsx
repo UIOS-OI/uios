@@ -1,15 +1,19 @@
 "use client";
 
 import { useThree } from "@react-three/fiber";
-import { useMemo, useRef } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import * as THREE from "three";
+import { usePerformanceBudget } from "../engine/PerformanceManager";
 import { useRenderTask } from "../engine/RenderLoop";
 import { energyFragmentShader, energyVertexShader } from "../shaders/Energy";
+import { useInteractionSystem } from "./InteractionSystem";
 
 export type ParticleSystemProps = {
   count?: number;
   radius?: number;
   color?: string;
+  position?: [number, number, number];
+  worldScale?: number;
 };
 
 function seeded(index: number, salt: number) {
@@ -17,8 +21,10 @@ function seeded(index: number, salt: number) {
   return value - Math.floor(value);
 }
 
-export function ParticleSystem({ count = 900, radius = 6.5, color = "#6f8cff" }: ParticleSystemProps) {
+export function ParticleSystem({ count = 5000, radius = 6.5, color = "#6f8cff", position = [0, 0, -900], worldScale = 260 }: ParticleSystemProps) {
   const material = useRef<THREE.ShaderMaterial>(null);
+  const budget = usePerformanceBudget();
+  const interaction = useInteractionSystem();
   const pixelRatio = useThree((state) => Math.min(state.gl.getPixelRatio(), 1.5));
   const geometry = useMemo(() => {
     const positions = new Float32Array(count * 3);
@@ -45,16 +51,28 @@ export function ParticleSystem({ count = 900, radius = 6.5, color = "#6f8cff" }:
       uTime: { value: 0 },
       uPixelRatio: { value: pixelRatio },
       uColor: { value: new THREE.Color(color) },
+      uPointer: { value: new THREE.Vector2() },
+      uInteraction: { value: 0 },
+      uIgnition: { value: 0 },
     }),
     [color, pixelRatio],
   );
 
+  useEffect(() => {
+    geometry.setDrawRange(0, Math.max(600, Math.floor(count * budget.particleScale)));
+  }, [budget.particleScale, count, geometry]);
+
   useRenderTask("particles", (_state, _delta, elapsed) => {
-    if (material.current) material.current.uniforms.uTime.value = elapsed;
+    if (material.current) {
+      material.current.uniforms.uTime.value = elapsed;
+      material.current.uniforms.uPointer.value.copy(interaction.pointer.current);
+      material.current.uniforms.uInteraction.value = interaction.pointerIntensity.current;
+      material.current.uniforms.uIgnition.value = Math.min(1, elapsed / 4.2);
+    }
   });
 
   return (
-    <points geometry={geometry} frustumCulled={false}>
+    <points geometry={geometry} position={position} scale={worldScale}>
       <shaderMaterial
         ref={material}
         vertexShader={energyVertexShader}
