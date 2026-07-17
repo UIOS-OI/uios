@@ -13,7 +13,7 @@ export type CrystalCoreSystemProps = {
   position?: [number, number, number];
 };
 
-export function CrystalCoreSystem({ scale = 185, position = [0, 0, -820] }: CrystalCoreSystemProps) {
+export function CrystalCoreSystem({ scale = 3800, position = [0, 0, -10000] }: CrystalCoreSystemProps) {
   const group = useRef<THREE.Group>(null);
   const material = useRef<THREE.ShaderMaterial>(null);
   const pulseShell = useRef<THREE.Mesh>(null);
@@ -59,7 +59,7 @@ export function CrystalCoreSystem({ scale = 185, position = [0, 0, -820] }: Crys
       const shellMaterial = pulseShell.current.material as THREE.MeshBasicMaterial;
       shellMaterial.opacity = 0.08 + awareness * 0.16 + systemPulse * 0.24;
     }
-    if (coreLight.current) coreLight.current.intensity = 220000 + (awareness + systemPulse) * 240000;
+    if (coreLight.current) coreLight.current.intensity = 1800000 + (awareness + systemPulse) * 1200000;
   }, 2);
 
   return (
@@ -102,7 +102,7 @@ export function CrystalCoreSystem({ scale = 185, position = [0, 0, -820] }: Crys
         <icosahedronGeometry args={[1.18, 2]} />
         <meshBasicMaterial color="#9f8cff" wireframe transparent opacity={0.08} blending={THREE.AdditiveBlending} />
       </mesh>
-      <pointLight ref={coreLight} color="#8aa8ff" intensity={220000} distance={2400} decay={2} />
+      <pointLight ref={coreLight} color="#8aa8ff" intensity={1800000} distance={120000} decay={2} />
     </group>
   );
 }

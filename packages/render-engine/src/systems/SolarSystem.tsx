@@ -10,13 +10,24 @@ import { SacredGeometryShell } from "./RegionSystem";
 
 // ── GLSL shaders ─────────────────────────────────────────────────────────────
 const BODY_VERT = /* glsl */`
+  uniform float uSeed;
+  uniform float uTime;
   varying vec2 vUv;
   varying vec3 vNormal;
   varying vec3 vWorldPosition;
+  
+  float hash(vec2 p){return fract(sin(dot(p,vec2(127.1+uSeed,311.7)))*43758.5453);}
+  float noise(vec2 p){vec2 i=floor(p);vec2 f=fract(p);f=f*f*(3.0-2.0*f);return mix(mix(hash(i),hash(i+vec2(1,0)),f.x),mix(hash(i+vec2(0,1)),hash(i+1.0),f.x),f.y);}
+  float fbm(vec2 p){float v=0.;float a=0.5;for(int i=0;i<3;i++){v+=noise(p)*a;p=p*2.1+7.3;a*=0.48;}return v;}
+
   void main() {
     vUv = uv;
     vNormal = normalize(normalMatrix * normal);
-    vec4 worldPos = modelMatrix * vec4(position, 1.0);
+    
+    float displacement = fbm(uv * 5.0) * 0.18;
+    vec3 displacedPos = position + normal * displacement;
+    
+    vec4 worldPos = modelMatrix * vec4(displacedPos, 1.0);
     vWorldPosition = worldPos.xyz;
     gl_Position = projectionMatrix * viewMatrix * worldPos;
   }
@@ -143,7 +154,7 @@ function OrbitingBody({ body, isNew, onSelect }: OrbitingBodyProps) {
       onPointerOver={(e) => { e.stopPropagation(); setHovered(true); document.body.style.cursor = "pointer"; }}
       onPointerOut={() => { setHovered(false); document.body.style.cursor = "default"; }}
     >
-      <sphereGeometry args={[1, 22, 14]} />
+      <icosahedronGeometry args={[1, 16]} />
       <shaderMaterial vertexShader={BODY_VERT} fragmentShader={BODY_FRAG} uniforms={uniforms} transparent={true} />
       {hovered && (
         <Html center distanceFactor={90000} style={{ pointerEvents: "none" }}>

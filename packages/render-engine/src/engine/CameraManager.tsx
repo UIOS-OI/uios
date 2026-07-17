@@ -125,9 +125,6 @@ export function CameraManager() {
   useRenderTask("camera-director", (_state, delta, elapsed) => {
     if (!controls.current || isFlying.current) return;
     if (!selectedId && !arrivedId) {
-      const awareness = pointerPresence.current;
-      controls.current.target.x = THREE.MathUtils.damp(controls.current.target.x, HOME_TARGET.x + pointer.current.x * 80 * awareness, 1.8, delta);
-      controls.current.target.y = THREE.MathUtils.damp(controls.current.target.y, HOME_TARGET.y + pointer.current.y * 50 * awareness, 1.8, delta);
       camera.position.x += Math.sin(elapsed * 0.085) * delta * 0.08;
       camera.position.y += Math.cos(elapsed * 0.07) * delta * 0.05;
     }
