@@ -9,8 +9,8 @@ import { useInteractionSystem } from "../systems/InteractionSystem";
 import { useRenderTask } from "./RenderLoop";
 import { useUniverseTopology, type SpatialLevel } from "./UniverseManager";
 
-const HOME_TARGET = new THREE.Vector3(0, 0, -10000);
-const HOME_POSITION = new THREE.Vector3(0, 260, 1900);
+const HOME_TARGET = new THREE.Vector3(0, 0, -8000000);
+const HOME_POSITION = new THREE.Vector3(0, 4000000, 20000000);
 const PORTAL_DISTANCE: Record<SpatialLevel, number> = { system: 180000, planet: 5200, world: 5200, district: 5100, building: 5100, workspace: 5000, document: 5200, graph: 5200, network: 5200 };
 const FLIGHT_TIME: Record<SpatialLevel, number> = { system: 9.5, planet: 8, world: 7, district: 6, building: 5.2, workspace: 4.8, document: 8, graph: 8, network: 8 };
 const REVEAL_DISTANCE: Record<SpatialLevel, number> = { system: 320000, planet: 56000, world: 48000, district: 42000, building: 36000, workspace: 32000, document: 30000, graph: 28000, network: 26000 };
@@ -31,7 +31,7 @@ export function CameraManager() {
   const selectedRegion = topology.nodeById(selectedId);
   const activeRegion = topology.nodeById(arrivedId);
   const localViewEnabled = arrivedId === selectedId && interaction.portalPhase === "idle";
-  const viewLimits = activeRegion ? LOCAL_VIEW_LIMITS[activeRegion.level] : { min: 280, max: 300000000 };
+  const viewLimits = activeRegion ? LOCAL_VIEW_LIMITS[activeRegion.level] : { min: 280, max: 1000000000 };
   const flight = useRef<gsap.core.Timeline | null>(null);
   const landing = useRef<gsap.core.Timeline | null>(null);
   const isFlying = useRef(false);
@@ -39,8 +39,8 @@ export function CameraManager() {
   useLayoutEffect(() => {
     if (!controls.current) return;
     isFlying.current = true;
-    camera.position.set(-4800, 3200, 48000);
-    controls.current.target.set(0, 600, -52000);
+    camera.position.set(0, 8000000, 42000000);
+    controls.current.target.set(0, 0, -8000000);
     perspectiveCamera.fov = 61;
     perspectiveCamera.updateProjectionMatrix();
     controls.current.update();
@@ -131,5 +131,5 @@ export function CameraManager() {
     controls.current.update();
   }, 30);
 
-  return <OrbitControls ref={controls} enableDamping dampingFactor={warpZoom ? 0.075 : 0.045} enablePan={true} enableRotate={true} enableZoom={true} maxDistance={viewLimits.max} minDistance={viewLimits.min} onStart={takeCameraControl} panSpeed={warpZoom ? 1.15 : 0.72} rotateSpeed={0.45} screenSpacePanning target={HOME_TARGET} zoomSpeed={warpZoom ? 14.0 : 1.2} zoomToCursor />;
+  return <OrbitControls ref={controls} enableDamping dampingFactor={warpZoom ? 0.075 : 0.045} enablePan={true} enableRotate={true} enableZoom={true} maxDistance={viewLimits.max} minDistance={viewLimits.min} onStart={takeCameraControl} panSpeed={warpZoom ? 1.15 : 0.72} rotateSpeed={0.45} screenSpacePanning zoomSpeed={warpZoom ? 14.0 : 1.2} />;
 }

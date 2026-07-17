@@ -75,18 +75,21 @@ export function DefaultRenderScene() {
       <ParticleSystem />
       <NeuralNetworkSystem />
       <IntelligenceCurrentSystem />
-      <CrystalCoreSystem />
+      <CrystalCoreSystem scale={1000000} />
       <RegionSystem />
     </StreamingManager>
   );
 }
 
-function UniverseStateObserver({ onRegionChange }: { onRegionChange?: (regionId: string | null, arrived: boolean, label?: string) => void }) {
+function UniverseStateObserver({ onRegionChange, onRegionHover }: { onRegionChange?: (regionId: string | null, arrived: boolean, label?: string) => void; onRegionHover?: (regionId: string | null, label?: string) => void }) {
   const interaction = useInteractionSystem();
   const topology = useUniverseTopology();
   useEffect(() => {
     onRegionChange?.(interaction.selectedId, interaction.arrivedId === interaction.selectedId, topology.nodeById(interaction.selectedId)?.label);
   }, [interaction.arrivedId, interaction.selectedId, onRegionChange, topology]);
+  useEffect(() => {
+    onRegionHover?.(interaction.hoveredId, topology.nodeById(interaction.hoveredId)?.label);
+  }, [interaction.hoveredId, onRegionHover, topology]);
   useEffect(() => {
     const navigateBack = () => interaction.goBack();
     window.addEventListener("uios:navigate-back", navigateBack);
@@ -100,9 +103,10 @@ export type SceneManagerProps = {
   className?: string;
   onPerformanceChange?: (factor: number) => void;
   onRegionChange?: (regionId: string | null, arrived: boolean, label?: string) => void;
+  onRegionHover?: (regionId: string | null, label?: string) => void;
 };
 
-export function SceneManager({ children, className, onPerformanceChange, onRegionChange }: SceneManagerProps) {
+export function SceneManager({ children, className, onPerformanceChange, onRegionChange, onRegionHover }: SceneManagerProps) {
   const [dpr, setDpr] = useState(1.5);
   const [performanceFactor, setPerformanceFactor] = useState(1);
   const handlePerformance = useCallback(
@@ -144,7 +148,7 @@ export function SceneManager({ children, className, onPerformanceChange, onRegio
                 <CameraManager />
                 <PortalTransitionSystem />
                 <IntentNavigationSystem />
-                <UniverseStateObserver onRegionChange={onRegionChange} />
+                <UniverseStateObserver onRegionChange={onRegionChange} onRegionHover={onRegionHover} />
                 {children ?? <DefaultRenderScene />}
               </InteractionSystem>
               <EffectComposer multisampling={0} enableNormalPass={false}>
