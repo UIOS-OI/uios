@@ -215,38 +215,90 @@ function PlanetBody({ color, id }: { color: string; id: string }) {
   );
 }
 
+const GALAXY_VERT = /* glsl */`
+  attribute vec3 color;
+  varying vec3 vColor;
+  void main() {
+    vColor = color;
+    vec4 mvPosition = modelViewMatrix * vec4(position, 1.0);
+    gl_PointSize = (120.0 / -mvPosition.z);
+    gl_Position = projectionMatrix * mvPosition;
+  }
+`;
+
+const GALAXY_FRAG = /* glsl */`
+  varying vec3 vColor;
+  void main() {
+    float dist = distance(gl_PointCoord, vec2(0.5));
+    if (dist > 0.5) discard;
+    float alpha = smoothstep(0.5, 0.0, dist);
+    gl_FragColor = vec4(vColor, alpha * 0.8);
+  }
+`;
+
 function GalaxyShell({ color, level }: { color: string; level: SpatialLevel }) {
+  const isSystem = level === "system";
+  const count = isSystem ? 25000 : 4000;
+  
   const geometry = useMemo(() => {
-    const count = level === "system" ? 320 : 220;
     const positions = new Float32Array(count * 3);
-    for (let index = 0; index < count; index += 1) {
-      const arm = index % 4;
-      const radius = 0.22 + Math.pow(seeded(index, 1), 0.62) * 2.5;
-      const angle = radius * 2.7 + arm * Math.PI * 0.5 + seeded(index, 2) * 0.48;
-      positions[index * 3] = Math.cos(angle) * radius;
-      positions[index * 3 + 1] = (seeded(index, 3) - 0.5) * (0.09 + radius * 0.08);
-      positions[index * 3 + 2] = Math.sin(angle) * radius;
+    const colors = new Float32Array(count * 3);
+    
+    const colorInside = new THREE.Color("#ffe8c4");
+    const colorOutside = new THREE.Color(color);
+    
+    for (let i = 0; i < count; i++) {
+      // Distance from center, weighted heavily towards the core
+      const r = Math.pow(Math.random(), 1.8) * (isSystem ? 3.5 : 2.0);
+      
+      // 2 main arms
+      const arm = (i % 2) * Math.PI; 
+      // Twist the arms based on distance
+      const spin = r * 1.4; 
+      
+      // Spread out the particles. Closer to center = less spread.
+      const spread = (isSystem ? 0.4 : 0.25) * (r + 0.2);
+      const randomX = (Math.pow(Math.random(), 2.0) * (Math.random() < 0.5 ? 1 : -1)) * spread;
+      const randomY = (Math.pow(Math.random(), 2.5) * (Math.random() < 0.5 ? 1 : -1)) * spread * 0.3; // Flatter on Y
+      const randomZ = (Math.pow(Math.random(), 2.0) * (Math.random() < 0.5 ? 1 : -1)) * spread;
+      
+      positions[i * 3 + 0] = Math.cos(arm + spin) * r + randomX;
+      positions[i * 3 + 1] = randomY;
+      positions[i * 3 + 2] = Math.sin(arm + spin) * r + randomZ;
+
+      // Color mixing based on distance
+      const mixedColor = colorInside.clone().lerp(colorOutside, r / (isSystem ? 3.0 : 1.5));
+      colors[i * 3 + 0] = mixedColor.r;
+      colors[i * 3 + 1] = mixedColor.g;
+      colors[i * 3 + 2] = mixedColor.b;
     }
+    
     const buffer = new THREE.BufferGeometry();
     buffer.setAttribute("position", new THREE.BufferAttribute(positions, 3));
+    buffer.setAttribute("color", new THREE.BufferAttribute(colors, 3));
     return buffer;
-  }, [level]);
+  }, [level, color, isSystem]);
+
+  const uniforms = useMemo(() => ({}), []);
 
   return (
-    <group rotation={[0.22, 0, -0.1]}>
+    <group rotation={[0.4, 0, -0.2]}>
       <points geometry={geometry}>
-        <pointsMaterial color={color} size={0.085} sizeAttenuation transparent opacity={0.92} depthWrite={false} blending={THREE.AdditiveBlending} />
+        <shaderMaterial 
+          vertexShader={GALAXY_VERT} 
+          fragmentShader={GALAXY_FRAG} 
+          uniforms={uniforms} 
+          transparent={true} 
+          blending={THREE.AdditiveBlending} 
+          depthWrite={false} 
+        />
       </points>
-      {[1.05, 1.68, 2.42].map((radius, index) => (
-        <mesh key={radius} rotation={[Math.PI / 2, index * 0.18, 0]}>
-          <torusGeometry args={[radius, index === 0 ? 0.028 : 0.014, 6, 96]} />
-          <meshBasicMaterial color={color} transparent opacity={0.22 - index * 0.045} blending={THREE.AdditiveBlending} />
+      {isSystem && (
+        <mesh scale={[3.8, 0.4, 3.8]}>
+          <sphereGeometry args={[1, 32, 16]} />
+          <meshBasicMaterial color={color} transparent opacity={0.04} depthWrite={false} blending={THREE.AdditiveBlending} />
         </mesh>
-      ))}
-      <mesh scale={[2.9, 0.16, 2.9]}>
-        <sphereGeometry args={[1, 32, 16]} />
-        <meshBasicMaterial color={color} transparent opacity={0.075} depthWrite={false} blending={THREE.AdditiveBlending} />
-      </mesh>
+      )}
     </group>
   );
 }

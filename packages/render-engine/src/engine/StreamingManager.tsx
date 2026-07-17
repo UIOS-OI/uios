@@ -22,7 +22,13 @@ export function StreamingManager({ children }: { children: ReactNode }) {
     // arrivedId is the active universe. Selection starts portal travel but does not unload it.
     // Camera arrival atomically rebases coordinates, then the old universe is replaced by the new one's entries.
     const activeUniverseId = interaction.arrivedId;
-    const visibleRegions = topology.childrenOf(activeUniverseId);
+    const rootRegions = topology.childrenOf(null);
+    const activeRegions = activeUniverseId ? topology.childrenOf(activeUniverseId) : [];
+    
+    // Deduplicate in case childrenOf returns overlapping items, though they shouldn't
+    const visibleMap = new Map();
+    [...rootRegions, ...activeRegions].forEach(r => visibleMap.set(r.id, r));
+    const visibleRegions = Array.from(visibleMap.values());
     const preloadedRegions = interaction.selectedId !== activeUniverseId ? topology.childrenOf(interaction.selectedId) : [];
     const activeNode = topology.nodeById(activeUniverseId);
     return {

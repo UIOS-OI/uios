@@ -118,7 +118,7 @@ export function SceneManager({ children, className, onPerformanceChange, onRegio
     <UniverseManager>
       <Canvas
       className={className}
-      camera={{ far: 3200000, fov: 48, near: 0.5, position: [0, 260, 1900] }}
+      camera={{ far: 300000000, fov: 48, near: 0.5, position: [0, 260, 1900] }}
       dpr={dpr}
       frameloop="always"
       gl={{ antialias: true, alpha: true, logarithmicDepthBuffer: true, powerPreference: "high-performance" }}

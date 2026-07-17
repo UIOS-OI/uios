@@ -11,11 +11,11 @@ import { useUniverseTopology, type SpatialLevel } from "./UniverseManager";
 
 const HOME_TARGET = new THREE.Vector3(0, 0, -10000);
 const HOME_POSITION = new THREE.Vector3(0, 260, 1900);
-const PORTAL_DISTANCE: Record<SpatialLevel, number> = { system: 30000, planet: 5200, world: 5200, district: 5100, building: 5100, workspace: 5000, document: 5200, graph: 5200, network: 5200 };
+const PORTAL_DISTANCE: Record<SpatialLevel, number> = { system: 180000, planet: 5200, world: 5200, district: 5100, building: 5100, workspace: 5000, document: 5200, graph: 5200, network: 5200 };
 const FLIGHT_TIME: Record<SpatialLevel, number> = { system: 9.5, planet: 8, world: 7, district: 6, building: 5.2, workspace: 4.8, document: 8, graph: 8, network: 8 };
-const REVEAL_DISTANCE: Record<SpatialLevel, number> = { system: 78000, planet: 56000, world: 48000, district: 42000, building: 36000, workspace: 32000, document: 30000, graph: 28000, network: 26000 };
+const REVEAL_DISTANCE: Record<SpatialLevel, number> = { system: 320000, planet: 56000, world: 48000, district: 42000, building: 36000, workspace: 32000, document: 30000, graph: 28000, network: 26000 };
 const LOCAL_VIEW_LIMITS: Record<SpatialLevel, { min: number; max: number }> = {
-  system: { min: 700, max: 300000000 }, planet: { min: 400, max: 300000000 }, world: { min: 160, max: 300000000 },
+  system: { min: 4000, max: 900000000 }, planet: { min: 400, max: 300000000 }, world: { min: 160, max: 300000000 },
   district: { min: 70, max: 300000000 }, building: { min: 24, max: 300000000 }, workspace: { min: 8, max: 300000000 },
   document: { min: 700, max: 300000000 }, graph: { min: 700, max: 300000000 }, network: { min: 700, max: 300000000 },
 };
@@ -31,7 +31,7 @@ export function CameraManager() {
   const selectedRegion = topology.nodeById(selectedId);
   const activeRegion = topology.nodeById(arrivedId);
   const localViewEnabled = arrivedId === selectedId && interaction.portalPhase === "idle";
-  const viewLimits = activeRegion ? LOCAL_VIEW_LIMITS[activeRegion.level] : { min: 280, max: 1200000 };
+  const viewLimits = activeRegion ? LOCAL_VIEW_LIMITS[activeRegion.level] : { min: 280, max: 300000000 };
   const flight = useRef<gsap.core.Timeline | null>(null);
   const landing = useRef<gsap.core.Timeline | null>(null);
   const isFlying = useRef(false);
@@ -88,6 +88,7 @@ export function CameraManager() {
           if (controls.current) { controls.current.enabled = true; controls.current.update(); }
           isFlying.current = false;
           setPortalPhase("idle");
+          arrive(selectedId);
         },
       });
       flight.current.to(camera.position, { x: approach.x, y: approach.y, z: approach.z, duration: 0.72, ease: "power3.inOut" }, 0);
@@ -111,6 +112,7 @@ export function CameraManager() {
         }
         isFlying.current = false;
         setPortalPhase("idle");
+        arrive(selectedId);
       },
     });
     
@@ -132,5 +134,5 @@ export function CameraManager() {
     controls.current.update();
   }, 30);
 
-  return <OrbitControls ref={controls} enableDamping dampingFactor={warpZoom ? 0.075 : 0.045} enablePan={localViewEnabled} enableRotate={localViewEnabled} enableZoom={localViewEnabled} maxDistance={viewLimits.max} minDistance={viewLimits.min} onStart={takeCameraControl} panSpeed={warpZoom ? 1.15 : 0.72} rotateSpeed={0.45} screenSpacePanning target={HOME_TARGET} zoomSpeed={warpZoom ? 3.4 : 0.72} zoomToCursor />;
+  return <OrbitControls ref={controls} enableDamping dampingFactor={warpZoom ? 0.075 : 0.045} enablePan={true} enableRotate={true} enableZoom={true} maxDistance={viewLimits.max} minDistance={viewLimits.min} onStart={takeCameraControl} panSpeed={warpZoom ? 1.15 : 0.72} rotateSpeed={0.45} screenSpacePanning target={HOME_TARGET} zoomSpeed={warpZoom ? 3.4 : 0.72} zoomToCursor />;
 }
