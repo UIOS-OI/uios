@@ -131,5 +131,5 @@ export function CameraManager() {
     controls.current.update();
   }, 30);
 
-  return <OrbitControls ref={controls} enableDamping dampingFactor={warpZoom ? 0.075 : 0.045} enablePan={true} enableRotate={true} enableZoom={true} maxDistance={viewLimits.max} minDistance={viewLimits.min} onStart={takeCameraControl} panSpeed={warpZoom ? 1.15 : 0.72} rotateSpeed={0.45} screenSpacePanning target={HOME_TARGET} zoomSpeed={warpZoom ? 3.4 : 0.72} zoomToCursor />;
+  return <OrbitControls ref={controls} enableDamping dampingFactor={warpZoom ? 0.075 : 0.045} enablePan={true} enableRotate={true} enableZoom={true} maxDistance={viewLimits.max} minDistance={viewLimits.min} onStart={takeCameraControl} panSpeed={warpZoom ? 1.15 : 0.72} rotateSpeed={0.45} screenSpacePanning target={HOME_TARGET} zoomSpeed={warpZoom ? 14.0 : 1.2} zoomToCursor />;
 }
