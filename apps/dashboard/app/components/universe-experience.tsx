@@ -3,6 +3,7 @@
 import { SceneManager, GalaxyManager, FluidConnectionSystem, SolarSystem, CelestialInfoPanel, type CelestialBody, DefaultRenderScene } from "@uios/render-engine";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { type FormEvent, useCallback, useEffect, useRef, useState } from "react";
+import { OnboardingModal, type UserProfile } from "./onboarding-modal";
 import styles from "./universe-experience.module.css";
 import { useLivingAudio } from "./use-living-audio";
 
@@ -17,11 +18,17 @@ export function UniverseExperience() {
   const [performance, setPerformance] = useState(1);
   const [activeRegion, setActiveRegion] = useState<string | null>(null);
   const [activeZoneLabel, setActiveZoneLabel] = useState("Root Universe");
+  const [hoveredZoneLabel, setHoveredZoneLabel] = useState<string | null>(null);
   const [arrivalNotice, setArrivalNotice] = useState<string | null>(null);
   const [documentReader, setDocumentReader] = useState<{ title: string; path: string; content?: string; error?: string } | null>(null);
   const [intent, setIntent] = useState("");
   const [warpZoom, setWarpZoom] = useState(true);
   const [activityLabel, setActivityLabel] = useState("Listening for intelligence activity");
+  
+  const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
+  const [showOnboarding, setShowOnboarding] = useState(false);
+  const interactionTimerStarted = useRef(false);
+
   const { disable: disableAudio, enable: enableAudio, enabled: audioEnabled } = useLivingAudio(activeRegion);
   const enterUniverse = useCallback(() => setEntered(true), []);
   const travelOutward = useCallback(() => window.dispatchEvent(new Event("uios:navigate-back")), []);
@@ -44,6 +51,28 @@ export function UniverseExperience() {
     const playback = video.current?.play();
     void playback?.catch(() => setBlocked(true));
   }, [entered, reduceMotion]);
+
+  useEffect(() => {
+    if (!entered || showOnboarding || userProfile || interactionTimerStarted.current) return;
+    
+    const startTimer = () => {
+      if (interactionTimerStarted.current) return;
+      interactionTimerStarted.current = true;
+      setTimeout(() => {
+        if (!userProfile) setShowOnboarding(true);
+      }, 10000);
+      window.removeEventListener("pointerdown", startTimer);
+      window.removeEventListener("wheel", startTimer);
+    };
+
+    window.addEventListener("pointerdown", startTimer, { once: true });
+    window.addEventListener("wheel", startTimer, { once: true });
+
+    return () => {
+      window.removeEventListener("pointerdown", startTimer);
+      window.removeEventListener("wheel", startTimer);
+    };
+  }, [entered, showOnboarding, userProfile]);
 
   const startIntro = useCallback(() => {
     setBlocked(false);
@@ -98,6 +127,11 @@ export function UniverseExperience() {
     }
   }, []);
 
+  const handleRegionHover = useCallback((regionId: string | null, label?: string) => {
+    if (regionId) setHoveredZoneLabel(label ?? regionId.replace(/-/g, " "));
+    else setHoveredZoneLabel(null);
+  }, []);
+
   useEffect(() => {
     if (!arrivalNotice) return;
     const timeout = window.setTimeout(() => setArrivalNotice(null), 20000);
@@ -136,10 +170,18 @@ export function UniverseExperience() {
     <main className={styles.page}>
       <div className={styles.visibilityField} aria-hidden="true" />
       <GalaxyManager>
-        <SceneManager className={styles.canvas} onPerformanceChange={setPerformance} onRegionChange={handleRegionChange}>
+        <SceneManager className={styles.canvas} onPerformanceChange={setPerformance} onRegionChange={handleRegionChange} onRegionHover={handleRegionHover}>
           <DefaultRenderScene />
           <FluidConnectionSystem />
-          <SolarSystem onBodySelect={(body) => setSelectedBody(body)} />
+          <SolarSystem 
+            userProfile={userProfile}
+            onBodySelect={(body) => {
+              if (body.documentPath) {
+                window.dispatchEvent(new CustomEvent("uios:open-document", { detail: { path: body.documentPath, title: body.label } }));
+              }
+              setSelectedBody(body);
+            }} 
+          />
         </SceneManager>
         <CelestialInfoPanel body={selectedBody} onClose={() => setSelectedBody(null)} />
       </GalaxyManager>
@@ -169,6 +211,22 @@ export function UniverseExperience() {
         <span>Current zone</span>
         <strong>{activeZoneLabel}</strong>
       </div>
+      <AnimatePresence>
+        {hoveredZoneLabel && hoveredZoneLabel !== activeZoneLabel && (
+          <motion.div
+            initial={{ opacity: 0, x: -10 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: -10 }}
+            transition={{ duration: 0.2 }}
+            className={styles.zoneBadge}
+            style={{ top: 'clamp(136px, 14vw, 170px)' }}
+            aria-label={`Target zone: ${hoveredZoneLabel}`}
+          >
+            <span style={{ color: '#8fffe0' }}>Target zone</span>
+            <strong>{hoveredZoneLabel}</strong>
+          </motion.div>
+        )}
+      </AnimatePresence>
       <form className={styles.intentBar} onSubmit={revealIntent}>
         <i />
         <input aria-label="Ask UIOS to reveal a reality layer" onChange={(event) => setIntent(event.target.value)} placeholder="Ask the Core to reveal engineering docs…" value={intent} />
@@ -238,6 +296,18 @@ export function UniverseExperience() {
             </div>
           </motion.section>
         ) : null}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {showOnboarding && !userProfile && (
+          <OnboardingModal
+            onComplete={(profile) => {
+              setUserProfile(profile);
+              setShowOnboarding(false);
+            }}
+            onDismiss={() => setShowOnboarding(false)}
+          />
+        )}
       </AnimatePresence>
     </main>
   );

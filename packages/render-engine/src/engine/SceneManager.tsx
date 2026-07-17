@@ -54,7 +54,7 @@ function BackgroundPlane() {
   }, -10);
 
   return (
-    <mesh frustumCulled={false} renderOrder={-1000}>
+    <mesh frustumCulled={false} renderOrder={-1000} raycast={() => null}>
       <planeGeometry args={[1, 1]} />
       <shaderMaterial
         ref={material}

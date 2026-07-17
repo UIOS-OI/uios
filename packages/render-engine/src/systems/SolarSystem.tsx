@@ -8,6 +8,10 @@ import { useGalaxyTopology, type CelestialBody, type GalaxyDescriptor } from "..
 import { useInteractionSystem } from "./InteractionSystem";
 import { SacredGeometryShell } from "./RegionSystem";
 
+export type UserProfile = {
+  name: string;
+};
+
 // ── GLSL shaders ─────────────────────────────────────────────────────────────
 const BODY_VERT = /* glsl */`
   uniform float uSeed;
@@ -213,6 +217,51 @@ function HostPlanet({ galaxy, onEnter }: { galaxy: GalaxyDescriptor; onEnter: ()
   );
 }
 
+// ── User's Personal Star ──────────────────────────────────────────────────────
+function UserStar({ profile }: { profile: UserProfile }) {
+  const ref = useRef<THREE.Mesh>(null);
+  const [hovered, setHovered] = useState(false);
+  const radius = 600000;
+  const seed = profile.name.split("").reduce((a, c) => a + c.charCodeAt(0), 0) * 0.01;
+  const color = "#ffb64f"; // Give them a distinct warm gold star
+  const uniforms = useMemo(() => ({
+    uColor: { value: new THREE.Color(color) },
+    uSeed: { value: seed },
+    uTime: { value: 0 },
+    uIsMoon: { value: 0.0 },
+  }), [color, seed]);
+  
+  useRenderTask(`user-star-${profile.name}`, (state) => {
+    if (ref.current) {
+      ref.current.rotation.y = state.clock.elapsedTime * 0.02;
+      uniforms.uTime.value = state.clock.elapsedTime;
+    }
+  }, 55);
+
+  return (
+    <group
+      ref={ref}
+      position={[3800000, 1200000, -20000]}
+      onPointerOver={(e) => { e.stopPropagation(); setHovered(true); document.body.style.cursor = "pointer"; }}
+      onPointerOut={() => { setHovered(false); document.body.style.cursor = "default"; }}
+      scale={radius}
+    >
+      <SacredGeometryShell color={color} id="user-star" seed={seed} />
+      {hovered && (
+        <Html center distanceFactor={2800000} style={{ pointerEvents: "none" }}>
+          <div style={{
+            background: "rgba(4,10,28,0.94)", border: `1px solid ${color}66`,
+            borderRadius: 9, color: "#fff", fontFamily: "ui-monospace,monospace",
+            fontSize: 10, padding: "5px 12px", whiteSpace: "nowrap",
+          }}>
+            {profile.name}'s Star · <span style={{ color }}>Personal Intelligence Core</span>
+          </div>
+        </Html>
+      )}
+    </group>
+  );
+}
+
 // ── Per-galaxy scene ──────────────────────────────────────────────────────────
 function GalaxySolarSystem({
   galaxy, newArrivals, onBodySelect, onEnter,
@@ -241,9 +290,10 @@ function GalaxySolarSystem({
 // ── Main export ───────────────────────────────────────────────────────────────
 export type SolarSystemProps = {
   onBodySelect?: (body: CelestialBody) => void;
+  userProfile?: UserProfile | null;
 };
 
-export function SolarSystem({ onBodySelect }: SolarSystemProps) {
+export function SolarSystem({ onBodySelect, userProfile }: SolarSystemProps) {
   const { galaxies, newArrivals } = useGalaxyTopology();
   const interaction = useInteractionSystem();
 
@@ -262,6 +312,7 @@ export function SolarSystem({ onBodySelect }: SolarSystemProps) {
           onEnter={handleEnter}
         />
       ))}
+      {userProfile && <UserStar profile={userProfile} />}
     </group>
   );
 }
