@@ -11,6 +11,7 @@ import { UiosCommandCenter } from "./uios-command-center";
 import { UsagePanel } from "./usage-panel";
 import { ApiKeyConsole } from "./api-key-console";
 import { SystemReadiness } from "./system-readiness";
+import { FileUploader } from "./file-uploader";
 
 const SceneManager = dynamic(
   () => import("@uios/render-engine").then((mod) => mod.SceneManager),
@@ -214,6 +215,7 @@ export function UniverseExperience() {
             </header>
             <div className={styles.drawerBody}>
               <WorkspaceSession />
+              <FileUploader />
               <UiosPlayground />
               <UiosCommandCenter />
               <UsagePanel />

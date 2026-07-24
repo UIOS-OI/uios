@@ -6,35 +6,87 @@ import * as THREE from "three";
 import { useRenderTask } from "../engine/RenderLoop";
 import { useGalaxyTopology, type CelestialBody, type GalaxyDescriptor } from "../engine/UniverseManager";
 import { useInteractionSystem } from "./InteractionSystem";
+import { getPlanetTexture } from "../engine/TextureManager";
 
-// ── GLSL shaders ─────────────────────────────────────────────────────────────
+// ── GLSL Shaders ─────────────────────────────────────────────────────────────
 const BODY_VERT = /* glsl */`
   varying vec2 vUv;
   varying vec3 vNormal;
+  varying vec3 vViewPosition;
   void main() {
     vUv = uv;
     vNormal = normalize(normalMatrix * normal);
-    gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+    vec4 mvPosition = modelViewMatrix * vec4(position, 1.0);
+    vViewPosition = -mvPosition.xyz;
+    gl_Position = projectionMatrix * mvPosition;
   }
 `;
+
 const BODY_FRAG = /* glsl */`
   uniform vec3 uColor;
   uniform float uSeed;
   uniform float uTime;
+  uniform sampler2D uTexture;
+  uniform float uUseTexture;
   varying vec2 vUv;
   varying vec3 vNormal;
+  varying vec3 vViewPosition;
+
   float hash(vec2 p){return fract(sin(dot(p,vec2(127.1+uSeed,311.7)))*43758.5453);}
   float noise(vec2 p){vec2 i=floor(p);vec2 f=fract(p);f=f*f*(3.0-2.0*f);return mix(mix(hash(i),hash(i+vec2(1,0)),f.x),mix(hash(i+vec2(0,1)),hash(i+1.0),f.x),f.y);}
   float fbm(vec2 p){float v=0.;float a=0.5;for(int i=0;i<5;i++){v+=noise(p)*a;p=p*2.1+7.3;a*=0.48;}return v;}
+
   void main(){
-    vec2 uv2=vec2(vUv.x*4.0+uTime*0.008,vUv.y*3.0);
-    float terrain=fbm(uv2);
-    vec3 light=normalize(vec3(0.6,0.5,0.8));
-    float diff=max(0.0,dot(vNormal,light));
-    float rim=pow(1.0-max(0.0,dot(vNormal,vec3(0,0,1))),2.5);
-    vec3 surface=mix(uColor*0.12,uColor*0.88,terrain);
-    vec3 col=surface*(0.08+diff*1.1)+uColor*rim*0.32;
-    gl_FragColor=vec4(col,1.0);
+    vec3 normal = normalize(vNormal);
+    vec3 viewDir = normalize(vViewPosition);
+
+    // Procedural terrain fallback
+    vec2 uv2 = vec2(vUv.x * 4.0 + uTime * 0.008, vUv.y * 3.0);
+    float terrain = fbm(uv2);
+    vec3 baseColor = mix(uColor * 0.12, uColor * 0.88, terrain);
+
+    // Texture sample if enabled
+    if (uUseTexture > 0.5) {
+      vec2 mapUv = vec2(vUv.x + uTime * 0.0015, vUv.y);
+      vec4 texColor = texture2D(uTexture, mapUv);
+      baseColor = mix(baseColor, texColor.rgb, 0.85);
+    }
+
+    // Lighting computations
+    vec3 lightDir = normalize(vec3(0.6, 0.5, 0.8));
+    float diff = max(0.0, dot(normal, lightDir));
+    
+    // Fresnel / Rim glow effect
+    float rim = pow(1.0 - max(0.0, dot(normal, viewDir)), 2.5);
+    
+    // Combine surface, diffuse lighting and glowing atmosphere rim
+    vec3 finalColor = baseColor * (0.15 + diff * 1.05) + uColor * rim * 0.45;
+    
+    gl_FragColor = vec4(finalColor, 1.0);
+  }
+`;
+
+// ── Atmosphere Glow Shader ──────────────────────────────────────────────────
+const ATMOSPHERE_VERT = /* glsl */`
+  varying vec3 vNormal;
+  varying vec3 vViewPosition;
+  void main() {
+    vNormal = normalize(normalMatrix * normal);
+    vec4 mvPosition = modelViewMatrix * vec4(position, 1.0);
+    vViewPosition = -mvPosition.xyz;
+    gl_Position = projectionMatrix * mvPosition;
+  }
+`;
+
+const ATMOSPHERE_FRAG = /* glsl */`
+  uniform vec3 uColor;
+  varying vec3 vNormal;
+  varying vec3 vViewPosition;
+  void main() {
+    vec3 normal = normalize(vNormal);
+    vec3 viewDir = normalize(vViewPosition);
+    float intensity = pow(0.6 - dot(normal, viewDir), 3.0);
+    gl_FragColor = vec4(uColor, 1.0) * intensity * 0.8;
   }
 `;
 
@@ -103,6 +155,8 @@ function OrbitingBody({ body, isNew, onSelect }: OrbitingBodyProps) {
     uColor: { value: new THREE.Color(body.color) },
     uSeed: { value: Math.abs(body.id.split("").reduce((a, c) => a + c.charCodeAt(0), 0)) % 99 * 0.01 },
     uTime: { value: 0 },
+    uTexture: { value: null },
+    uUseTexture: { value: 0.0 }
   }), [body.color, body.id]);
 
   useRenderTask(`body-${body.id}`, (state) => {
@@ -152,38 +206,87 @@ function HostPlanet({ galaxy, onEnter }: { galaxy: GalaxyDescriptor; onEnter: ()
   const [hovered, setHovered] = useState(false);
   const radius = 4200 + galaxy.hostPlanet.size * 2200;
   const seed = galaxy.id.split("").reduce((a, c) => a + c.charCodeAt(0), 0);
+  const [texture, setTexture] = useState<THREE.Texture | null>(null);
+
+  // Lazy-load texture for this host system
+  useEffect(() => {
+    const loadedTex = getPlanetTexture(galaxy.id);
+    if (loadedTex) {
+      setTexture(loadedTex);
+    } else {
+      // Poll/Check again in next frames/ticks or listen for loading
+      const interval = setInterval(() => {
+        const tex = getPlanetTexture(galaxy.id);
+        if (tex) {
+          setTexture(tex);
+          clearInterval(interval);
+        }
+      }, 250);
+      return () => clearInterval(interval);
+    }
+  }, [galaxy.id]);
+
   const uniforms = useMemo(() => ({
     uColor: { value: new THREE.Color(galaxy.color) },
     uSeed: { value: seed * 0.01 },
     uTime: { value: 0 },
+    uTexture: { value: null as THREE.Texture | null },
+    uUseTexture: { value: 0.0 }
   }), [galaxy.color, seed]);
+
+  // Update uniform values
+  useEffect(() => {
+    if (texture) {
+      uniforms.uTexture.value = texture;
+      uniforms.uUseTexture.value = 1.0;
+    }
+  }, [texture, uniforms]);
+
   useRenderTask(`host-${galaxy.id}`, (state) => {
     if (ref.current) {
       ref.current.rotation.y = state.clock.elapsedTime * 0.04;
       uniforms.uTime.value = state.clock.elapsedTime;
     }
   }, 55);
+
   return (
-    <mesh
-      ref={ref}
-      onClick={(e) => { e.stopPropagation(); onEnter(); }}
-      onPointerOver={(e) => { e.stopPropagation(); setHovered(true); document.body.style.cursor = "pointer"; }}
-      onPointerOut={() => { setHovered(false); document.body.style.cursor = "default"; }}
-    >
-      <sphereGeometry args={[radius, 48, 32]} />
-      <shaderMaterial vertexShader={BODY_VERT} fragmentShader={BODY_FRAG} uniforms={uniforms} />
-      {hovered && (
-        <Html center distanceFactor={90000} style={{ pointerEvents: "none" }}>
-          <div style={{
-            background: "rgba(4,10,28,0.94)", border: `1px solid ${galaxy.color}66`,
-            borderRadius: 9, color: "#fff", fontFamily: "ui-monospace,monospace",
-            fontSize: 10, padding: "5px 12px", whiteSpace: "nowrap",
-          }}>
-            {galaxy.hostPlanet.label} · <span style={{ color: galaxy.color }}>Zoom In</span>
-          </div>
-        </Html>
-      )}
-    </mesh>
+    <group>
+      {/* Outer Atmosphere Glow */}
+      <mesh>
+        <sphereGeometry args={[radius * 1.06, 32, 32]} />
+        <shaderMaterial
+          vertexShader={ATMOSPHERE_VERT}
+          fragmentShader={ATMOSPHERE_FRAG}
+          uniforms={{ uColor: { value: new THREE.Color(galaxy.color) } }}
+          blending={THREE.AdditiveBlending}
+          side={THREE.BackSide}
+          transparent
+          depthWrite={false}
+        />
+      </mesh>
+
+      {/* Textured Solid Planet Body */}
+      <mesh
+        ref={ref}
+        onClick={(e) => { e.stopPropagation(); onEnter(); }}
+        onPointerOver={(e) => { e.stopPropagation(); setHovered(true); document.body.style.cursor = "pointer"; }}
+        onPointerOut={() => { setHovered(false); document.body.style.cursor = "default"; }}
+      >
+        <sphereGeometry args={[radius, 48, 32]} />
+        <shaderMaterial vertexShader={BODY_VERT} fragmentShader={BODY_FRAG} uniforms={uniforms} />
+        {hovered && (
+          <Html center distanceFactor={90000} style={{ pointerEvents: "none" }}>
+            <div style={{
+              background: "rgba(4,10,28,0.94)", border: `1px solid ${galaxy.color}66`,
+              borderRadius: 9, color: "#fff", fontFamily: "ui-monospace,monospace",
+              fontSize: 10, padding: "5px 12px", whiteSpace: "nowrap",
+            }}>
+              {galaxy.hostPlanet.label} · <span style={{ color: galaxy.color }}>Zoom In</span>
+            </div>
+          </Html>
+        )}
+      </mesh>
+    </group>
   );
 }
 

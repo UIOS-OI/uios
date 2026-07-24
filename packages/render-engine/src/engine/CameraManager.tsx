@@ -35,6 +35,7 @@ export function CameraManager() {
   const flight = useRef<gsap.core.Timeline | null>(null);
   const landing = useRef<gsap.core.Timeline | null>(null);
   const isFlying = useRef(false);
+  const isInteracting = useRef(false);
 
   useLayoutEffect(() => {
     if (!controls.current) return;
@@ -77,7 +78,7 @@ export function CameraManager() {
   }, [selectedId, setPortalPhase]);
 
   useRenderTask("camera-director", (_state, delta, elapsed) => {
-    if (!controls.current || isFlying.current) return;
+    if (!controls.current || isFlying.current || isInteracting.current) return;
     if (!selectedId && !arrivedId) {
       const awareness = pointerPresence.current;
       controls.current.target.x = THREE.MathUtils.damp(controls.current.target.x, HOME_TARGET.x + pointer.current.x * 80 * awareness, 1.8, delta);
@@ -88,5 +89,29 @@ export function CameraManager() {
     controls.current.update();
   }, 30);
 
-  return <OrbitControls ref={controls} enableDamping dampingFactor={warpZoom ? 0.075 : 0.045} enablePan={localViewEnabled} enableRotate={localViewEnabled} enableZoom={localViewEnabled} maxDistance={viewLimits.max} minDistance={viewLimits.min} onStart={takeCameraControl} panSpeed={warpZoom ? 1.15 : 0.72} rotateSpeed={0.45} screenSpacePanning target={HOME_TARGET} zoomSpeed={warpZoom ? 3.4 : 0.72} zoomToCursor />;
+  return (
+    <OrbitControls
+      ref={controls}
+      enableDamping
+      dampingFactor={warpZoom ? 0.075 : 0.045}
+      enablePan={localViewEnabled}
+      enableRotate={localViewEnabled}
+      enableZoom={localViewEnabled}
+      maxDistance={viewLimits.max}
+      minDistance={viewLimits.min}
+      onStart={() => {
+        takeCameraControl();
+        isInteracting.current = true;
+      }}
+      onEnd={() => {
+        isInteracting.current = false;
+      }}
+      panSpeed={warpZoom ? 1.15 : 0.72}
+      rotateSpeed={0.45}
+      screenSpacePanning
+      target={HOME_TARGET}
+      zoomSpeed={warpZoom ? 3.4 : 0.72}
+      zoomToCursor
+    />
+  );
 }

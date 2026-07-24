@@ -257,7 +257,11 @@ export function GalaxyManager({ children }: { children: ReactNode }) {
   useEffect(() => {
     fetchGalaxies();
     const interval = setInterval(fetchGalaxies, 30_000);
-    return () => clearInterval(interval);
+    window.addEventListener("uios:refresh-topology", fetchGalaxies);
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener("uios:refresh-topology", fetchGalaxies);
+    };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
