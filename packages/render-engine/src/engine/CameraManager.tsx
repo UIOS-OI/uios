@@ -30,8 +30,8 @@ export function CameraManager() {
   const { arrive, arrivedId, pointer, pointerPresence, selectedId, setPortalPhase } = interaction;
   const selectedRegion = topology.nodeById(selectedId);
   const activeRegion = topology.nodeById(arrivedId);
-  const localViewEnabled = arrivedId === selectedId && interaction.portalPhase === "idle";
-  const viewLimits = activeRegion ? LOCAL_VIEW_LIMITS[activeRegion.level] : { min: 280, max: 1200000 };
+  const localViewEnabled = true;
+  const viewLimits = { min: 280, max: 2000000 };
   const flight = useRef<gsap.core.Timeline | null>(null);
   const landing = useRef<gsap.core.Timeline | null>(null);
   const isFlying = useRef(false);
@@ -71,73 +71,10 @@ export function CameraManager() {
   }, []);
 
   useLayoutEffect(() => {
-    if (!controls.current || selectedId === arrivedId) return;
-    landing.current?.kill();
-    flight.current?.kill();
-    isFlying.current = true;
-    controls.current.enabled = false;
-
-    if (interaction.navigationMode === "reveal") {
-      setPortalPhase("materialize");
-      const target = selectedRegion ? new THREE.Vector3(...selectedRegion.position) : HOME_TARGET.clone();
-      const approach = selectedRegion ? target.clone().add(new THREE.Vector3(0, REVEAL_DISTANCE[selectedRegion.level] * 0.12, REVEAL_DISTANCE[selectedRegion.level])) : HOME_POSITION.clone();
-      flight.current = gsap.timeline({
-        onComplete: () => {
-          camera.position.copy(HOME_POSITION);
-          perspectiveCamera.fov = 48;
-          perspectiveCamera.updateProjectionMatrix();
-          if (controls.current) { controls.current.target.copy(HOME_TARGET); controls.current.enabled = true; controls.current.update(); }
-          isFlying.current = false;
-          setPortalPhase("idle");
-          arrive(selectedId);
-        },
-      });
-      flight.current.to(camera.position, { x: approach.x, y: approach.y, z: approach.z, duration: 0.72, ease: "power3.inOut" }, 0);
-      flight.current.to(controls.current.target, { x: target.x, y: target.y, z: target.z, duration: 0.72, ease: "power3.inOut" }, 0);
-      flight.current.to(perspectiveCamera, { fov: 37, duration: 0.46, ease: "power2.in", onUpdate: () => perspectiveCamera.updateProjectionMatrix() }, 0);
-      flight.current.to(perspectiveCamera, { fov: 48, duration: 0.26, ease: "power3.out", onUpdate: () => perspectiveCamera.updateProjectionMatrix() });
-      return () => { flight.current?.kill(); };
-    }
-
-    const currentPath = arrivedId ? topology.pathTo(arrivedId) : [];
-    const outbound = selectedId === null || currentPath.some((node) => node.id === selectedId);
-    const duration = selectedRegion ? FLIGHT_TIME[selectedRegion.level] : 6.5;
-    const portalDistance = selectedRegion ? PORTAL_DISTANCE[selectedRegion.level] : 2200;
-    const start = camera.position.clone();
-    const direction = new THREE.Vector3();
-    camera.getWorldDirection(direction);
-    const target = outbound || !selectedRegion ? start.clone().addScaledVector(direction, 18000) : new THREE.Vector3(...selectedRegion.position);
-    const departure = start.clone().add(start.clone().sub(target).normalize().multiplyScalar(Math.min(600, start.distanceTo(target) * 0.035)));
-    const approach = target.clone().add(new THREE.Vector3(portalDistance * 0.18, portalDistance * 0.12, portalDistance));
-    const threshold = target.clone().add(new THREE.Vector3(0, 0, portalDistance * 0.08));
-    const inside = target.clone().addScaledVector(direction, 12000);
-
-    setPortalPhase("approach");
-    flight.current = gsap.timeline({
-      onComplete: () => {
-        // The tunnel masks a floating-origin rebase. Only the entered universe is mounted afterward.
-        camera.position.copy(HOME_POSITION);
-        if (controls.current) {
-          controls.current.target.copy(HOME_TARGET);
-          controls.current.enabled = true;
-          controls.current.update();
-        }
-        isFlying.current = false;
-        setPortalPhase("idle");
-        arrive(selectedId);
-      },
-    });
-    flight.current.to(camera.position, { x: departure.x, y: departure.y, z: departure.z, duration: 0.65, ease: "sine.out" });
-    flight.current.to(camera.position, { x: approach.x, y: approach.y, z: approach.z, duration: duration * 0.5, ease: "power2.inOut" });
-    flight.current.to(controls.current.target, { x: target.x, y: target.y, z: target.z, duration: duration * 0.5, ease: "power2.inOut" }, 0.65);
-    flight.current.call(() => setPortalPhase("fracture"));
-    flight.current.to(camera.position, { x: threshold.x, y: threshold.y, z: threshold.z, duration: duration * 0.18, ease: "power3.in" });
-    flight.current.call(() => setPortalPhase("tunnel"));
-    flight.current.to(camera.position, { x: inside.x, y: inside.y, z: inside.z, duration: duration * 0.2, ease: "power4.in" });
-    flight.current.call(() => setPortalPhase("materialize"));
-    flight.current.to(camera, { fov: 49.5, duration: duration * 0.07, yoyo: true, repeat: 1, onUpdate: () => camera.updateProjectionMatrix() });
-    return () => { flight.current?.kill(); };
-  }, [arrive, arrivedId, camera, interaction.navigationMode, selectedId, selectedRegion, setPortalPhase, topology]);
+    // Tunneling and portal transitions are disabled. Selecting a system stays in the same view.
+    if (!controls.current) return;
+    setPortalPhase("idle");
+  }, [selectedId, setPortalPhase]);
 
   useRenderTask("camera-director", (_state, delta, elapsed) => {
     if (!controls.current || isFlying.current) return;

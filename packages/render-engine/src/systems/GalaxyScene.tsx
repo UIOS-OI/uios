@@ -5,6 +5,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import * as THREE from "three";
 import { useRenderTask } from "../engine/RenderLoop";
 import { useInteractionSystem } from "./InteractionSystem";
+import { useGalaxyTopology, type CelestialBody } from "../engine/UniverseManager";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -389,9 +390,127 @@ function PlanetBody({ system }: { system: GalaxySystem }) {
   );
 }
 
-// ─── Individual orbital planet ────────────────────────────────────────────────
+// ─── Individual orbital planet & moons ───────────────────────────────────────
 
-function OrbitalPlanet({ system }: { system: GalaxySystem }) {
+function hashFloat(seed: string): number {
+  let h = 0x811c9dc5;
+  for (let i = 0; i < seed.length; i++) {
+    h ^= seed.charCodeAt(i);
+    h = (Math.imul(h, 0x01000193) >>> 0);
+  }
+  return (h >>> 0) / 0xffffffff;
+}
+
+function OrbitingMoon({
+  body,
+  planetSize,
+  index,
+  isNew,
+}: {
+  body: CelestialBody;
+  planetSize: number;
+  index: number;
+  isNew: boolean;
+}) {
+  const meshRef = useRef<THREE.Mesh>(null);
+  const [hovered, setHovered] = useState(false);
+  const [birthScale, setBirthScale] = useState(isNew ? 0 : 1);
+  const moonSize = planetSize * (0.08 + body.size * 0.08);
+  const orbitRadius = planetSize * (1.5 + index * 0.45 + hashFloat(body.id) * 0.15);
+
+  useEffect(() => {
+    if (!isNew) return;
+    let frame: number;
+    const start = performance.now();
+    const tick = () => {
+      const t = Math.min(1, (performance.now() - start) / 1200);
+      setBirthScale(t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2);
+      if (t < 1) frame = requestAnimationFrame(tick);
+    };
+    frame = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(frame);
+  }, [isNew]);
+
+  useRenderTask(`moon-${body.id}`, (state) => {
+    const mesh = meshRef.current;
+    if (!mesh) return;
+    const t = state.clock.elapsedTime;
+    const angle = body.orbitPhase + t * body.orbitSpeed;
+    mesh.position.set(
+      Math.cos(angle) * orbitRadius,
+      Math.sin(angle * 0.7 + body.orbitInclination) * orbitRadius * 0.28,
+      Math.sin(angle) * orbitRadius,
+    );
+    mesh.rotation.y = t * 0.18;
+    const scaleFactor = moonSize * birthScale * (hovered ? 1.25 : 1.0);
+    mesh.scale.setScalar(scaleFactor);
+  }, 54);
+
+  const handleClick = (e: { stopPropagation: () => void }) => {
+    e.stopPropagation();
+    window.dispatchEvent(
+      new CustomEvent("uios:open-document", {
+        detail: { path: body.documentPath || body.id, title: body.label },
+      })
+    );
+  };
+
+  const handlePointerOver = (e: { stopPropagation: () => void }) => {
+    e.stopPropagation();
+    setHovered(true);
+    document.body.style.cursor = "pointer";
+  };
+
+  const handlePointerOut = () => {
+    setHovered(false);
+    document.body.style.cursor = "default";
+  };
+
+  return (
+    <mesh
+      ref={meshRef}
+      onClick={handleClick}
+      onPointerOver={handlePointerOver}
+      onPointerOut={handlePointerOut}
+    >
+      <sphereGeometry args={[1, 16, 12]} />
+      <meshStandardMaterial
+        color={body.color}
+        emissive={body.color}
+        emissiveIntensity={hovered ? 1.2 : 0.4}
+        metalness={0.2}
+        roughness={0.2}
+      />
+      {hovered && (
+        <Html center distanceFactor={planetSize * 50} style={{ pointerEvents: "none" }}>
+          <div style={{
+            background: "rgba(4,10,28,0.92)",
+            border: `1px solid ${body.color}88`,
+            borderRadius: 6,
+            color: "#eef2ff",
+            fontFamily: "ui-monospace,monospace",
+            fontSize: 9,
+            letterSpacing: "0.06em",
+            padding: "4px 8px",
+            whiteSpace: "nowrap",
+          }}>
+            {body.label}
+          </div>
+        </Html>
+      )}
+    </mesh>
+  );
+}
+
+function OrbitalPlanet({
+  system,
+  bodies,
+  newArrivals,
+}: {
+  system: GalaxySystem;
+  bodies: CelestialBody[];
+  newArrivals: Set<string>;
+}) {
   const group = useRef<THREE.Group>(null);
   const [hovered, setHovered] = useState(false);
   const [birthScale, setBirthScale] = useState(0.001);
@@ -467,6 +586,18 @@ function OrbitalPlanet({ system }: { system: GalaxySystem }) {
           decay={2}
         />
       </group>
+      
+      {/* Orbiting document/memory moons */}
+      {bodies.map((body, index) => (
+        <OrbitingMoon
+          key={body.id}
+          body={body}
+          planetSize={system.planetSize}
+          index={index}
+          isNew={newArrivals.has(body.id)}
+        />
+      ))}
+
       {hovered && (
         <Html center distanceFactor={system.planetSize * 60} style={{ pointerEvents: "none" }}>
           <div style={{
@@ -626,21 +757,31 @@ function IntelligenceSun() {
 // ─── Main export ──────────────────────────────────────────────────────────────
 
 export function GalaxyScene() {
+  const { galaxies, newArrivals } = useGalaxyTopology();
+
   return (
     <group>
       <StarField />
       <GalaxyDust />
       <IntelligenceSun />
-      {GALAXY_SYSTEMS.map((system) => (
-        <group key={system.id}>
-          <OrbitRing
-            radius={system.orbitRadius}
-            color={system.color}
-            inclination={system.orbitInclination}
-          />
-          <OrbitalPlanet system={system} />
-        </group>
-      ))}
+      {GALAXY_SYSTEMS.map((system) => {
+        const galaxy = galaxies.find((g) => g.id === system.id);
+        const bodies = galaxy?.bodies ?? [];
+        return (
+          <group key={system.id}>
+            <OrbitRing
+              radius={system.orbitRadius}
+              color={system.color}
+              inclination={system.orbitInclination}
+            />
+            <OrbitalPlanet
+              system={system}
+              bodies={bodies}
+              newArrivals={newArrivals}
+            />
+          </group>
+        );
+      })}
     </group>
   );
 }

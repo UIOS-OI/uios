@@ -5,6 +5,12 @@ import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { type FormEvent, useCallback, useEffect, useRef, useState } from "react";
 import styles from "./universe-experience.module.css";
 import { useLivingAudio } from "./use-living-audio";
+import { WorkspaceSession } from "./workspace-session";
+import { UiosPlayground } from "./uios-playground";
+import { UiosCommandCenter } from "./uios-command-center";
+import { UsagePanel } from "./usage-panel";
+import { ApiKeyConsole } from "./api-key-console";
+import { SystemReadiness } from "./system-readiness";
 
 const SceneManager = dynamic(
   () => import("@uios/render-engine").then((mod) => mod.SceneManager),
@@ -26,6 +32,7 @@ export function UniverseExperience() {
   const [intent, setIntent] = useState("");
   const [warpZoom, setWarpZoom] = useState(true);
   const [activityLabel, setActivityLabel] = useState("Listening for intelligence activity");
+  const [dashboardOpen, setDashboardOpen] = useState(false);
   const { disable: disableAudio, enable: enableAudio, enabled: audioEnabled } = useLivingAudio(activeRegion);
   const enterUniverse = useCallback(() => setEntered(true), []);
   const travelOutward = useCallback(() => window.dispatchEvent(new Event("uios:navigate-back")), []);
@@ -149,6 +156,7 @@ export function UniverseExperience() {
         <div className={styles.telemetry} aria-live="polite">
           <span><i /> Universe active</span>
           <span>{performance >= 0.5 ? "Adaptive 60 FPS target" : "Economy render mode"}</span>
+          <button className={`${styles.audioControl} ${dashboardOpen ? styles.warpActive : ""}`} onClick={() => setDashboardOpen(!dashboardOpen)} type="button">{dashboardOpen ? "✕ Close control panel" : "⚙ Control panel"}</button>
           <button className={styles.audioControl} onClick={toggleSound} type="button">{audioEnabled ? "Mute living audio" : "Enable living audio"}</button>
           <button aria-pressed={warpZoom} className={`${styles.audioControl} ${warpZoom ? styles.warpActive : ""}`} onClick={toggleWarpZoom} type="button">Warp zoom {warpZoom ? "on" : "off"}</button>
           <button className={styles.audioControl} onClick={() => { setBlocked(false); setEntered(false); }} type="button">Play cinematic intro</button>
@@ -188,6 +196,31 @@ export function UniverseExperience() {
             <small>To go back: press Esc, select Travel Outward, or click the Intelligence Core.</small>
             <button onClick={() => setArrivalNotice(null)} type="button">Continue exploring</button>
           </motion.aside>
+        ) : null}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {dashboardOpen ? (
+          <motion.div
+            animate={{ x: 0, opacity: 1 }}
+            className={styles.dashboardDrawer}
+            exit={{ x: -440, opacity: 0 }}
+            initial={{ x: -440, opacity: 0 }}
+            transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
+          >
+            <header className={styles.drawerHeader}>
+              <h2>UIOS Control Panel</h2>
+              <button className={styles.drawerClose} onClick={() => setDashboardOpen(false)} type="button">✕</button>
+            </header>
+            <div className={styles.drawerBody}>
+              <WorkspaceSession />
+              <UiosPlayground />
+              <UiosCommandCenter />
+              <UsagePanel />
+              <ApiKeyConsole />
+              <SystemReadiness />
+            </div>
+          </motion.div>
         ) : null}
       </AnimatePresence>
 

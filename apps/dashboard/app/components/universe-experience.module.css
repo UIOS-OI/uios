@@ -260,3 +260,200 @@
 @media (prefers-reduced-motion: reduce) {
   .page :global(.uios-region-signal) { transition: none; }
 }
+
+.dashboardDrawer {
+  background: linear-gradient(155deg, rgba(4, 12, 32, 0.94), rgba(12, 4, 28, 0.92));
+  border-right: 1px solid rgba(139, 172, 255, 0.18);
+  box-shadow: 0 0 60px rgba(0, 0, 15, 0.8), 24px 0 80px rgba(0, 0, 0, 0.6);
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  left: 0;
+  position: absolute;
+  top: 0;
+  width: min(440px, 95vw);
+  z-index: 15;
+  backdrop-filter: blur(28px);
+}
+
+.drawerHeader {
+  align-items: center;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  display: flex;
+  justify-content: space-between;
+  padding: 18px 24px;
+}
+
+.drawerHeader h2 {
+  color: #f0f4ff;
+  font-family: ui-monospace, SFMono-Regular, monospace;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.15em;
+  margin: 0;
+  text-transform: uppercase;
+}
+
+.drawerClose {
+  background: transparent;
+  border: none;
+  color: #7d8ea7;
+  cursor: pointer;
+  font-size: 18px;
+  line-height: 1;
+  padding: 4px;
+  transition: color 0.22s ease;
+}
+
+.drawerClose:hover {
+  color: #fff;
+}
+
+.drawerBody {
+  flex: 1;
+  overflow-y: auto;
+  padding: 24px;
+}
+
+.drawerBody::-webkit-scrollbar {
+  width: 4px;
+}
+
+.drawerBody::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.drawerBody::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.12);
+  border-radius: 2px;
+}
+
+/* Also ensure custom button colors/styles are compatible */
+.drawerBody :global(section) {
+  margin-bottom: 28px !important;
+}
+
+.drawerBody :global(.workspace-session) {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-bottom: 24px;
+  padding: 16px;
+}
+
+.drawerBody :global(.workspace-session-setup) {
+  flex-direction: column;
+}
+
+.drawerBody :global(.workspace-session span) {
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.drawerBody :global(.workspace-session span strong) {
+  color: #fff;
+  display: block;
+}
+
+.drawerBody :global(.workspace-session span small) {
+  color: #8c9cb3;
+  display: block;
+  font-size: 10px;
+  margin-top: 2px;
+}
+
+.drawerBody :global(.workspace-session button) {
+  align-self: flex-start;
+}
+
+.drawerBody :global(.command-center) {
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 12px;
+  padding: 16px;
+}
+
+.drawerBody :global(.module-rail) {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.drawerBody :global(.module-button) {
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(255, 255, 255, 0.04);
+  border-radius: 6px;
+  color: #a3b8cc;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 12px;
+  text-align: left;
+  transition: all 0.2s ease;
+}
+
+.drawerBody :global(.module-button:hover) {
+  background: rgba(255, 255, 255, 0.06);
+  color: #fff;
+}
+
+.drawerBody :global(.module-button.active) {
+  background: rgba(139, 172, 255, 0.08);
+  border-color: rgba(139, 172, 255, 0.28);
+  color: #fff;
+}
+
+.drawerBody :global(.module-detail) {
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  margin-top: 12px;
+  padding-top: 12px;
+}
+
+.drawerBody :global(.module-detail h3) {
+  color: #f0f4ff;
+  font-size: 14px;
+  margin: 4px 0 6px;
+}
+
+.drawerBody :global(.module-detail p) {
+  color: #8fa0b3;
+  font-size: 11px;
+  line-height: 1.5;
+  margin: 0;
+}
+
+.drawerBody :global(.playground-card) {
+  background: rgba(255, 255, 255, 0.02) !important;
+  border: 1px solid rgba(255, 255, 255, 0.06) !important;
+  box-shadow: none !important;
+  padding: 16px !important;
+}
+
+.drawerBody :global(.playground-card textarea) {
+  background: rgba(0, 0, 0, 0.3) !important;
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+  color: #fff !important;
+  font-size: 12px !important;
+}
+
+.drawerBody :global(.api-key-console) {
+  background: rgba(255, 255, 255, 0.02) !important;
+  border: 1px solid rgba(255, 255, 255, 0.06) !important;
+  border-radius: 12px !important;
+  padding: 16px !important;
+}
+
+.drawerBody :global(.api-key-console table) {
+  font-size: 11px !important;
+}
+
+.drawerBody :global(.readiness-panel) {
+  background: rgba(255, 255, 255, 0.02) !important;
+  border: 1px solid rgba(255, 255, 255, 0.06) !important;
+  border-radius: 12px !important;
+  padding: 16px !important;
+}
