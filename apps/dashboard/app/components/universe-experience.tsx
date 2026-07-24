@@ -1,10 +1,15 @@
 "use client";
 
-import { SceneManager } from "@uios/render-engine";
+import dynamic from "next/dynamic";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { type FormEvent, useCallback, useEffect, useRef, useState } from "react";
 import styles from "./universe-experience.module.css";
 import { useLivingAudio } from "./use-living-audio";
+
+const SceneManager = dynamic(
+  () => import("@uios/render-engine").then((mod) => mod.SceneManager),
+  { ssr: false },
+);
 
 export function UniverseExperience() {
   const video = useRef<HTMLVideoElement>(null);

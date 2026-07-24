@@ -7,6 +7,7 @@ import { type ReactNode, useCallback, useEffect, useMemo, useRef, useState } fro
 import * as THREE from "three";
 import { backgroundFragmentShader, backgroundVertexShader } from "../shaders/Background";
 import { CrystalCoreSystem } from "../systems/CrystalCoreSystem";
+import { GalaxyScene } from "../systems/GalaxyScene";
 import { InteractionSystem, useInteractionSystem } from "../systems/InteractionSystem";
 import { LightingSystem } from "../systems/LightingSystem";
 import { NeuralNetworkSystem } from "../systems/NeuralNetworkSystem";
@@ -72,6 +73,7 @@ export function DefaultRenderScene() {
   return (
     <StreamingManager>
       <LightingSystem />
+      <GalaxyScene />
       <ParticleSystem />
       <NeuralNetworkSystem />
       <IntelligenceCurrentSystem />
@@ -118,7 +120,7 @@ export function SceneManager({ children, className, onPerformanceChange, onRegio
     <UniverseManager>
       <Canvas
       className={className}
-      camera={{ far: 3200000, fov: 48, near: 0.5, position: [0, 260, 1900] }}
+      camera={{ far: 3200000, fov: 52, near: 0.5, position: [0, 6000, 32000] }}
       dpr={dpr}
       frameloop="always"
       gl={{ antialias: true, alpha: true, logarithmicDepthBuffer: true, powerPreference: "high-performance" }}

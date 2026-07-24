@@ -10,3 +10,6 @@ build/
 *.log
 .DS_Store
 .agents/
+.codex-temp/
+.vercel/
+output/

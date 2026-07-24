@@ -32,6 +32,7 @@ export {
 } from "./engine/TextureManager";
 
 export { CrystalCoreSystem, type CrystalCoreSystemProps } from "./systems/CrystalCoreSystem";
+export { GalaxyScene } from "./systems/GalaxyScene";
 export {
   InteractionSystem,
   useInteractionSystem,
@@ -56,3 +57,5 @@ export { crystalFragmentShader, crystalVertexShader } from "./shaders/Crystal";
 export { energyFragmentShader, energyVertexShader } from "./shaders/Energy";
 export { pulseFragmentShader, pulseVertexShader } from "./shaders/Pulse";
 export { backgroundFragmentShader, backgroundVertexShader } from "./shaders/Background";
+
+export { useSettings } from "./store/settings";

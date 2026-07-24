@@ -9,8 +9,8 @@ import { useInteractionSystem } from "../systems/InteractionSystem";
 import { useRenderTask } from "./RenderLoop";
 import { useUniverseTopology, type SpatialLevel } from "./UniverseManager";
 
-const HOME_TARGET = new THREE.Vector3(0, 0, -10000);
-const HOME_POSITION = new THREE.Vector3(0, 260, 1900);
+const HOME_TARGET = new THREE.Vector3(0, 0, 0);
+const HOME_POSITION = new THREE.Vector3(0, 6000, 32000);
 const PORTAL_DISTANCE: Record<SpatialLevel, number> = { system: 30000, planet: 5200, world: 5200, district: 5100, building: 5100, workspace: 5000, document: 5200, graph: 5200, network: 5200 };
 const FLIGHT_TIME: Record<SpatialLevel, number> = { system: 9.5, planet: 8, world: 7, district: 6, building: 5.2, workspace: 4.8, document: 8, graph: 8, network: 8 };
 const REVEAL_DISTANCE: Record<SpatialLevel, number> = { system: 78000, planet: 56000, world: 48000, district: 42000, building: 36000, workspace: 32000, document: 30000, graph: 28000, network: 26000 };
@@ -39,18 +39,18 @@ export function CameraManager() {
   useLayoutEffect(() => {
     if (!controls.current) return;
     isFlying.current = true;
-    camera.position.set(-4800, 3200, 48000);
-    controls.current.target.set(0, 600, -52000);
-    perspectiveCamera.fov = 61;
+    camera.position.set(-8000, 42000, 120000);
+    controls.current.target.set(0, 0, 0);
+    perspectiveCamera.fov = 62;
     perspectiveCamera.updateProjectionMatrix();
     controls.current.update();
     landing.current = gsap.timeline({
       defaults: { ease: "power2.inOut" },
       onComplete: () => { isFlying.current = false; },
     });
-    landing.current.to(camera.position, { x: HOME_POSITION.x, y: HOME_POSITION.y, z: HOME_POSITION.z, duration: 4.6 }, 0);
-    landing.current.to(controls.current.target, { x: HOME_TARGET.x, y: HOME_TARGET.y, z: HOME_TARGET.z, duration: 4.6 }, 0);
-    landing.current.to(perspectiveCamera, { fov: 48, duration: 4.1, onUpdate: () => perspectiveCamera.updateProjectionMatrix() }, 0.25);
+    landing.current.to(camera.position, { x: HOME_POSITION.x, y: HOME_POSITION.y, z: HOME_POSITION.z, duration: 5.2 }, 0);
+    landing.current.to(controls.current.target, { x: HOME_TARGET.x, y: HOME_TARGET.y, z: HOME_TARGET.z, duration: 5.2 }, 0);
+    landing.current.to(perspectiveCamera, { fov: 52, duration: 4.8, onUpdate: () => perspectiveCamera.updateProjectionMatrix() }, 0.4);
     return () => { landing.current?.kill(); };
   }, [camera, perspectiveCamera]);
 
