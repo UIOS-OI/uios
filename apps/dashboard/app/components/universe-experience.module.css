@@ -1,5 +1,5 @@
 .page {
-  background: #030817;
+  background: #000208;
   color: #eef4ff;
   height: 100svh;
   isolation: isolate;
@@ -14,17 +14,28 @@
 }
 
 .visibilityField {
-  background:
-    radial-gradient(ellipse at 50% 58%, rgba(72, 84, 190, .38), transparent 24%),
-    radial-gradient(ellipse at 14% 24%, rgba(30, 139, 194, .19), transparent 27%),
-    radial-gradient(ellipse at 84% 72%, rgba(110, 48, 154, .16), transparent 29%),
-    linear-gradient(145deg, #071735, #030a1d 54%, #091733);
-  inset: 0;
+  display: none;
+}
+
+.cosmosHint {
+  bottom: 22px;
+  color: rgba(196, 214, 255, .58);
+  font: 500 10px ui-monospace, SFMono-Regular, Menlo, monospace;
+  left: 50%;
+  letter-spacing: .08em;
   pointer-events: none;
   position: absolute;
-  mix-blend-mode: screen;
-  opacity: .38;
-  z-index: 2;
+  text-align: center;
+  text-transform: uppercase;
+  translate: -50% 0;
+  width: min(920px, calc(100vw - 32px));
+  z-index: 4;
+}
+
+.cosmosHint span {
+  color: rgba(120, 255, 210, .7);
+  display: block;
+  margin-top: 6px;
 }
 
 .statusRail {
@@ -456,4 +467,19 @@
   border: 1px solid rgba(255, 255, 255, 0.06) !important;
   border-radius: 12px !important;
   padding: 16px !important;
+}
+
+.cosmosHint {
+  bottom: 32px;
+  color: rgba(214, 228, 255, 0.58);
+  font: 500 12px/1.45 ui-sans-serif, system-ui, sans-serif;
+  left: 50%;
+  letter-spacing: 0.035em;
+  pointer-events: none;
+  position: absolute;
+  text-align: center;
+  text-shadow: 0 2px 18px #000;
+  transform: translateX(-50%);
+  z-index: 4;
+  width: min(92vw, 720px);
 }

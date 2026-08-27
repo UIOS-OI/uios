@@ -52,6 +52,8 @@ export {
 export { NeuralNetworkSystem, type NeuralNetworkSystemProps } from "./systems/NeuralNetworkSystem";
 export { ParticleSystem, type ParticleSystemProps } from "./systems/ParticleSystem";
 export { RegionSystem, type RegionSystemProps, type RenderRegion } from "./systems/RegionSystem";
+export { SpatialHtml, orientationTowardOrigin, type SpatialHtmlProps } from "./systems/SpatialHtml";
+export { CosmosSandbox } from "./systems/CosmosSandbox";
 
 export { crystalFragmentShader, crystalVertexShader } from "./shaders/Crystal";
 export { energyFragmentShader, energyVertexShader } from "./shaders/Energy";

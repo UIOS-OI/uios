@@ -23,11 +23,6 @@ export function IntentNavigationSystem() {
         if (score > winnerScore) { winner = region; winnerScore = score; }
       }
       if (!winner) return;
-      if (winner.action === "open-document" && winner.documentPath) {
-        window.dispatchEvent(new CustomEvent("uios:open-document", { detail: { path: winner.documentPath, title: winner.label } }));
-        window.dispatchEvent(new CustomEvent("uios:intent-result", { detail: { id: winner.id, label: winner.label } }));
-        return;
-      }
       interaction.select(winner.id);
       window.dispatchEvent(new CustomEvent("uios:intent-result", { detail: { id: winner.id, label: winner.label } }));
     };

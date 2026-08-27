@@ -1,7 +1,7 @@
 "use client";
 
 import { Html } from "@react-three/drei";
-import { type CSSProperties, type ReactNode, useMemo, useRef } from "react";
+import { type CSSProperties, type ReactNode, useEffect, useMemo, useRef, useState } from "react";
 import * as THREE from "three";
 import { useRenderTask } from "../engine/RenderLoop";
 import { useStreamingSectors } from "../engine/StreamingManager";
@@ -12,6 +12,7 @@ import {
   type UniverseRegionKind,
 } from "../engine/UniverseManager";
 import { useInteractionSystem } from "./InteractionSystem";
+import { orientationTowardOrigin, SpatialHtml } from "./SpatialHtml";
 
 export type RenderRegion = UniverseRegion;
 export type RegionSystemProps = {
@@ -351,14 +352,71 @@ function RegionGeometry({ kind, color, id, level, action }: { kind: UniverseRegi
   return <><mesh><icosahedronGeometry args={[0.72, 1]} /><meshStandardMaterial color="#101633" emissive={color} emissiveIntensity={0.9} metalness={0.55} roughness={0.2} /></mesh><mesh scale={1.3}><sphereGeometry args={[0.72, 18, 12]} /><meshBasicMaterial color={color} transparent opacity={0.08} /></mesh></>;
 }
 
-function DefaultInterface({ region }: { region: RenderRegion }) {
+function SpatialWorkCard({ onClose, region }: { onClose: () => void; region: RenderRegion }) {
   return (
-    <div className="uios-region-interface">
-      <span>{region.eyebrow}</span>
+    <>
+      <header>
+        <span>{region.eyebrow}</span>
+        <button aria-label="Close spatial surface" onClick={onClose} type="button">×</button>
+      </header>
       <h2>{region.label}</h2>
       <p>{region.description}</p>
-      <small>{region.source === "workspace" ? "Workspace topology" : "UIOS system region"}</small>
-    </div>
+      <footer>
+        <small>{region.source === "workspace" ? "Workspace topology" : `${region.level} entrance`}</small>
+        <small>Foreground work surface · distant worlds recede</small>
+      </footer>
+    </>
+  );
+}
+
+function SpatialDocumentCard({ onClose, region }: { onClose: () => void; region: RenderRegion }) {
+  const [content, setContent] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(Boolean(region.documentPath));
+
+  useEffect(() => {
+    const path = region.documentPath;
+    if (!path) {
+      setLoading(false);
+      setError("This artifact has no readable path.");
+      return;
+    }
+    let cancelled = false;
+    setLoading(true);
+    setError(null);
+    setContent(null);
+    void fetch(`/api/universe/document?path=${encodeURIComponent(path)}`, { cache: "no-store" })
+      .then(async (response) => {
+        const payload = await response.json() as { content?: string; error?: string };
+        if (!response.ok || !payload.content) throw new Error(payload.error ?? "The Memory artifact could not be opened.");
+        if (!cancelled) setContent(payload.content);
+      })
+      .catch((caught: unknown) => {
+        if (!cancelled) setError(caught instanceof Error ? caught.message : "The Memory artifact could not be opened.");
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => { cancelled = true; };
+  }, [region.documentPath]);
+
+  return (
+    <>
+      <header>
+        <span>Memory artifact</span>
+        <button aria-label="Close spatial surface" onClick={onClose} type="button">×</button>
+      </header>
+      <h2>{region.label}</h2>
+      <small className="uios-spatial-path">{region.documentPath}</small>
+      <div className="uios-spatial-document">
+        {loading ? <p>Memory is resolving this artifact…</p> : null}
+        {error ? <p className="uios-spatial-error">{error}</p> : null}
+        {content ? <pre>{content}</pre> : null}
+      </div>
+      <footer>
+        <small>Read-only · this artifact is in the foreground</small>
+      </footer>
+    </>
   );
 }
 
@@ -368,15 +426,12 @@ function RegionDestination({ region, index, renderInterface, children }: { regio
   const halo = useRef<THREE.Mesh>(null);
   const interaction = useInteractionSystem();
   const activity = useUniverseActivity();
-  const active = interaction.hoveredId === region.id || interaction.selectedId === region.id;
-  const arrived = interaction.arrivedId === region.id;
+  const selected = interaction.selectedId === region.id;
+  const active = interaction.hoveredId === region.id || selected;
   const worldScale = LEVEL_SCALE[region.level] * (region.scale ?? 1);
   const traffic = activity.pulses.some((pulse) => pulse.route.includes(region.id));
+  const facing = useMemo(() => orientationTowardOrigin(region.position), [region.position]);
   const activate = () => {
-    if (region.action === "open-document" && region.documentPath) {
-      window.dispatchEvent(new CustomEvent("uios:open-document", { detail: { path: region.documentPath, title: region.label } }));
-      return;
-    }
     interaction.select(region.id);
   };
 
@@ -458,20 +513,32 @@ function RegionDestination({ region, index, renderInterface, children }: { regio
         </button>
       </Html>
 
-      {active ? (
+      {active && !selected ? (
         <Html center position={[worldScale * 1.5, worldScale * 0.65, 0]} distanceFactor={Math.max(80, worldScale * 18)} style={{ pointerEvents: "none" }}>
           <div className="uios-object-popup">
             <span>{region.action === "open-document" ? "Memory artifact" : `${region.level} entrance`}</span>
             <strong>{region.label}</strong>
-            <small>{region.action === "open-document" ? "Click to open this file" : "Click to reveal the universe inside"}</small>
+            <small>{region.action === "open-document" ? "Click to open this file in space" : "Click to reveal the universe inside"}</small>
           </div>
         </Html>
       ) : null}
 
-      {arrived && region.level === "workspace" ? (
-        <Html center position={[worldScale * 1.8, worldScale * 0.2, 0]} distanceFactor={Math.max(20, worldScale * 2.5)} transform sprite>
-          {renderInterface ? renderInterface(region) : <DefaultInterface region={region} />}
-        </Html>
+      {selected ? (
+        <group position={[worldScale * 1.72, worldScale * 0.12, worldScale * 0.4]} rotation={facing}>
+          <SpatialHtml
+            color={region.color}
+            height={region.action === "open-document" ? 460 : 340}
+            id={region.id}
+            width={region.action === "open-document" ? 640 : 520}
+            worldWidth={worldScale * (region.action === "open-document" ? 2.8 : 2.35)}
+          >
+            {region.action === "open-document" && region.documentPath ? (
+              <SpatialDocumentCard onClose={() => interaction.goBack()} region={region} />
+            ) : renderInterface ? renderInterface(region) : (
+              <SpatialWorkCard onClose={() => interaction.goBack()} region={region} />
+            )}
+          </SpatialHtml>
+        </group>
       ) : null}
       {children}
     </group>

@@ -3,114 +3,64 @@
 import { OrbitControls } from "@react-three/drei";
 import { useThree } from "@react-three/fiber";
 import gsap from "gsap";
-import { type ElementRef, useEffect, useLayoutEffect, useRef, useState } from "react";
+import { type ElementRef, useLayoutEffect, useRef } from "react";
 import * as THREE from "three";
-import { useInteractionSystem } from "../systems/InteractionSystem";
-import { useRenderTask } from "./RenderLoop";
-import { useUniverseTopology, type SpatialLevel } from "./UniverseManager";
 
 const HOME_TARGET = new THREE.Vector3(0, 0, 0);
-const HOME_POSITION = new THREE.Vector3(0, 6000, 32000);
-const PORTAL_DISTANCE: Record<SpatialLevel, number> = { system: 30000, planet: 5200, world: 5200, district: 5100, building: 5100, workspace: 5000, document: 5200, graph: 5200, network: 5200 };
-const FLIGHT_TIME: Record<SpatialLevel, number> = { system: 9.5, planet: 8, world: 7, district: 6, building: 5.2, workspace: 4.8, document: 8, graph: 8, network: 8 };
-const REVEAL_DISTANCE: Record<SpatialLevel, number> = { system: 78000, planet: 56000, world: 48000, district: 42000, building: 36000, workspace: 32000, document: 30000, graph: 28000, network: 26000 };
-const LOCAL_VIEW_LIMITS: Record<SpatialLevel, { min: number; max: number }> = {
-  system: { min: 700, max: 900000 }, planet: { min: 400, max: 700000 }, world: { min: 160, max: 500000 },
-  district: { min: 70, max: 250000 }, building: { min: 24, max: 120000 }, workspace: { min: 8, max: 900000 },
-  document: { min: 700, max: 900000 }, graph: { min: 700, max: 900000 }, network: { min: 700, max: 900000 },
-};
+const HOME_POSITION = new THREE.Vector3(2400, 2800, 14800);
 
 export function CameraManager() {
   const camera = useThree((state) => state.camera);
   const perspectiveCamera = camera as THREE.PerspectiveCamera;
   const controls = useRef<ElementRef<typeof OrbitControls>>(null);
-  const [warpZoom, setWarpZoom] = useState(true);
-  const interaction = useInteractionSystem();
-  const topology = useUniverseTopology();
-  const { arrive, arrivedId, pointer, pointerPresence, selectedId, setPortalPhase } = interaction;
-  const selectedRegion = topology.nodeById(selectedId);
-  const activeRegion = topology.nodeById(arrivedId);
-  const localViewEnabled = true;
-  const viewLimits = { min: 280, max: 2000000 };
-  const flight = useRef<gsap.core.Timeline | null>(null);
   const landing = useRef<gsap.core.Timeline | null>(null);
-  const isFlying = useRef(false);
-  const isInteracting = useRef(false);
+  const isFlying = useRef(true);
 
   useLayoutEffect(() => {
     if (!controls.current) return;
-    isFlying.current = true;
-    camera.position.set(-8000, 42000, 120000);
+    camera.position.set(8000, 18000, 64000);
     controls.current.target.set(0, 0, 0);
-    perspectiveCamera.fov = 62;
+    perspectiveCamera.fov = 58;
     perspectiveCamera.updateProjectionMatrix();
     controls.current.update();
     landing.current = gsap.timeline({
       defaults: { ease: "power2.inOut" },
-      onComplete: () => { isFlying.current = false; },
+      onComplete: () => {
+        isFlying.current = false;
+      },
     });
-    landing.current.to(camera.position, { x: HOME_POSITION.x, y: HOME_POSITION.y, z: HOME_POSITION.z, duration: 5.2 }, 0);
-    landing.current.to(controls.current.target, { x: HOME_TARGET.x, y: HOME_TARGET.y, z: HOME_TARGET.z, duration: 5.2 }, 0);
-    landing.current.to(perspectiveCamera, { fov: 52, duration: 4.8, onUpdate: () => perspectiveCamera.updateProjectionMatrix() }, 0.4);
-    return () => { landing.current?.kill(); };
-  }, [camera, perspectiveCamera]);
-
-  const takeCameraControl = () => {
-    if (!landing.current?.isActive()) return;
-    landing.current.kill();
-    isFlying.current = false;
-  };
-
-  useEffect(() => {
-    setWarpZoom(window.localStorage.getItem("uios.warp-zoom.v1") !== "off");
-    const updateWarpZoom = (event: Event) => {
-      const detail = (event as CustomEvent<{ enabled?: boolean }>).detail;
-      if (typeof detail?.enabled === "boolean") setWarpZoom(detail.enabled);
+    landing.current.to(camera.position, { x: HOME_POSITION.x, y: HOME_POSITION.y, z: HOME_POSITION.z, duration: 3.1 }, 0);
+    landing.current.to(controls.current.target, { x: HOME_TARGET.x, y: HOME_TARGET.y, z: HOME_TARGET.z, duration: 3.1 }, 0);
+    landing.current.to(perspectiveCamera, {
+      fov: 50,
+      duration: 2.6,
+      onUpdate: () => perspectiveCamera.updateProjectionMatrix(),
+    }, 0.2);
+    return () => {
+      landing.current?.kill();
     };
-    window.addEventListener("uios:warp-zoom", updateWarpZoom);
-    return () => window.removeEventListener("uios:warp-zoom", updateWarpZoom);
-  }, []);
-
-  useLayoutEffect(() => {
-    // Tunneling and portal transitions are disabled. Selecting a system stays in the same view.
-    if (!controls.current) return;
-    setPortalPhase("idle");
-  }, [selectedId, setPortalPhase]);
-
-  useRenderTask("camera-director", (_state, delta, elapsed) => {
-    if (!controls.current || isFlying.current || isInteracting.current) return;
-    if (!selectedId && !arrivedId) {
-      const awareness = pointerPresence.current;
-      controls.current.target.x = THREE.MathUtils.damp(controls.current.target.x, HOME_TARGET.x + pointer.current.x * 80 * awareness, 1.8, delta);
-      controls.current.target.y = THREE.MathUtils.damp(controls.current.target.y, HOME_TARGET.y + pointer.current.y * 50 * awareness, 1.8, delta);
-      camera.position.x += Math.sin(elapsed * 0.085) * delta * 0.08;
-      camera.position.y += Math.cos(elapsed * 0.07) * delta * 0.05;
-    }
-    controls.current.update();
-  }, 30);
+  }, [camera, perspectiveCamera]);
 
   return (
     <OrbitControls
       ref={controls}
+      makeDefault
       enableDamping
-      dampingFactor={warpZoom ? 0.075 : 0.045}
-      enablePan={localViewEnabled}
-      enableRotate={localViewEnabled}
-      enableZoom={localViewEnabled}
-      maxDistance={viewLimits.max}
-      minDistance={viewLimits.min}
+      dampingFactor={0.068}
+      enablePan
+      enableRotate
+      enableZoom
+      maxDistance={5200000}
+      minDistance={120}
       onStart={() => {
-        takeCameraControl();
-        isInteracting.current = true;
+        landing.current?.kill();
+        isFlying.current = false;
       }}
-      onEnd={() => {
-        isInteracting.current = false;
-      }}
-      panSpeed={warpZoom ? 1.15 : 0.72}
-      rotateSpeed={0.45}
+      panSpeed={1.05}
+      rotateSpeed={0.48}
       screenSpacePanning
       target={HOME_TARGET}
-      zoomSpeed={warpZoom ? 3.4 : 0.72}
+      zoomSpeed={2.8}
       zoomToCursor
     />
   );
