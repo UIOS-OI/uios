@@ -1,6 +1,7 @@
 import { NextRequest } from "next/server";
 import type { WorkflowDefinition } from "@uios/contracts";
 import { analytics, workflowEngine } from "../../../lib/platform-services";
+import { projectFoundationTraffic } from "../../../lib/foundation-universe";
 import { checkAegis, checkRateLimit, estimateUnits, getPlanLimit, getUsage, recordUsage, rejectCrossOriginMutation, rejectInvalidApiKey, requireRole, resolveTenantId, verifyWorkflowApproval } from "../../../lib/runtime";
 
 export const runtime = "nodejs";
@@ -21,7 +22,10 @@ export async function POST(request: NextRequest) {
     return Response.json({ error: "Human approval is required before this workflow can execute.", approvalRequired: true, workflowId: workflow.id, nodeIds: approvalNodes }, { status: 202 });
   }
   const rate = checkRateLimit(tenantId, "workflow");
-  if (!rate.allowed) return Response.json({ error: "UIOS workflow rate limit reached.", retryAfterSeconds: rate.retryAfterSeconds }, { status: 429, headers: { "Retry-After": String(rate.retryAfterSeconds) } });
+  if (!rate.allowed) {
+    projectFoundationTraffic(tenantId, "workflow", { allowed: false, reason: "Rate limit" });
+    return Response.json({ error: "UIOS workflow rate limit reached.", retryAfterSeconds: rate.retryAfterSeconds }, { status: 429, headers: { "Retry-After": String(rate.retryAfterSeconds) } });
+  }
   const input = body.input ?? {};
   let serializedInput = "";
   try { serializedInput = JSON.stringify(input); } catch { return Response.json({ error: "Workflow input must be JSON-serializable." }, { status: 400 }); }
@@ -29,6 +33,7 @@ export async function POST(request: NextRequest) {
   const prompt = typeof input.prompt === "string" ? input.prompt : "";
   if (prompt.length > 50_000) return Response.json({ error: "Workflow input is too large." }, { status: 400 });
   const aegis = await checkAegis(prompt ? [{ role: "user", content: prompt }] : [], tenantId);
+  projectFoundationTraffic(tenantId, "workflow", aegis);
   if (!aegis.allowed) return Response.json({ error: aegis.reason ?? "Aegis blocked this workflow." }, { status: 403 });
   const modelNodes = workflow.nodes.filter((node) => node.type === "model").length;
   const units = Math.max(1, modelNodes * estimateUnits(prompt ? [{ role: "user", content: prompt }] : [{ role: "user", content: workflow.name }]));

@@ -2,6 +2,8 @@ export const runtime = "nodejs";
 
 export function GET() {
   return Response.json({ openapi: "3.1.0", info: { title: "UIOS Control Plane API", version: "0.1.0", description: "Provider-neutral enterprise intelligence, security, memory, workflow, and usage APIs." }, servers: [{ url: "/" }], security: [{ bearerAuth: [] }], components: { securitySchemes: { bearerAuth: { type: "http", scheme: "bearer", description: "Workspace-scoped uios_live key." } } }, paths: {
+    "/api/foundation": { get: { summary: "Read the Aegis Unified foundation universe for the signed-in workspace" }, post: { summary: "Connect an LLM and a firewall, proxy, or sidecar defence layer" }, delete: { summary: "Disconnect the foundation universe" } },
+    "/api/foundation/witness": { post: { summary: "Classify a sample through Aegis and project the decision into the foundation universe without storing the sample" } },
     "/api/chat": { post: { summary: "Stream a routed model response", responses: { "200": { description: "Server-sent events" }, "403": { description: "Aegis blocked" }, "402": { description: "Usage limit" } } } },
     "/api/agent/run": { post: { summary: "Run a bounded agent" } },
     "/api/workflows/run": { post: { summary: "Execute a bounded workflow" } },
