@@ -2,7 +2,6 @@
 
 import { FormEvent, useEffect, useState } from "react";
 import type { FoundationTrafficSample, FoundationUniverseLink } from "@uios/render-engine";
-import { WorkspaceSession } from "./workspace-session";
 import { FoundationCanvas } from "./foundation-canvas";
 import styles from "./foundation-experience.module.css";
 
@@ -70,6 +69,23 @@ export function FoundationExperience() {
       window.clearInterval(timer);
     };
   }, [snapshot.connected]);
+
+  async function createWorkspace() {
+    setBusy(true);
+    setStatus("");
+    try {
+      const response = await fetch("/api/workspace", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ name: "UIOS workspace" }),
+      });
+      if (!response.ok) throw new Error("Workspace setup is unavailable.");
+      window.location.reload();
+    } catch (error) {
+      setStatus(error instanceof Error ? error.message : "Workspace setup is unavailable.");
+      setBusy(false);
+    }
+  }
 
   async function connect(event: FormEvent) {
     event.preventDefault();
@@ -150,7 +166,12 @@ export function FoundationExperience() {
       <section className={styles.panel} aria-label="Aegis Unified foundation">
         <div className={styles.eyebrow}>Aegis Unified</div>
         <h1>Foundation universe</h1>
-        {session === "signed-out" ? <WorkspaceSession /> : null}
+        {session === "signed-out" ? (
+          <div className={styles.form}>
+            <p className={styles.copy}>A signed workspace is required before a model and a protection layer can form this universe.</p>
+            <button className={styles.primary} type="button" onClick={() => void createWorkspace()} disabled={busy}>Create workspace</button>
+          </div>
+        ) : null}
         {link ? (
           <>
             <div className={styles.linkCard}>
@@ -188,7 +209,7 @@ export function FoundationExperience() {
               </div>
             </form>
           </>
-        ) : (
+        ) : session === "signed-in" ? (
           <>
             <p className={styles.copy}>Connect a model and a protection layer. Earth becomes that model. The shell becomes the firewall, proxy, or sidecar. Live prompts and API calls soar past. Refusals aim for Earth and turn aside.</p>
             <form className={styles.form} onSubmit={connect}>
@@ -202,11 +223,11 @@ export function FoundationExperience() {
                 ))}
               </div>
               <div className={styles.actions}>
-                <button className={styles.primary} type="submit" disabled={busy || session === "signed-out"}>Create universe</button>
+                <button className={styles.primary} type="submit" disabled={busy}>Create universe</button>
               </div>
             </form>
           </>
-        )}
+        ) : null}
         {status ? <p className={styles.status} role="status">{status}</p> : null}
       </section>
       <p className={styles.hint}>Drag to orbit the model · scroll to approach · gold, blue, green, violet, and rose stars are prompt, API, tool, memory, and workflow traffic · red bodies are deflections</p>
