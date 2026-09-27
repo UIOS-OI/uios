@@ -1,4 +1,5 @@
 import { NextRequest } from "next/server";
+import { projectFoundationTraffic } from "../../lib/foundation-universe";
 import { checkAegis, rejectCrossOriginMutation, rejectUnauthorized, requireRole, resolveTenantId } from "../../lib/runtime";
 import { memoryStore } from "../../lib/platform-services";
 
@@ -22,6 +23,7 @@ export async function POST(request: NextRequest) {
   const metadata = body.metadata ?? {};
   if (typeof metadata !== "object" || Array.isArray(metadata) || Object.keys(metadata).length > 50 || Object.entries(metadata).some(([key, value]) => key.length > 120 || typeof value !== "string" || value.length > 500)) return Response.json({ error: "Memory metadata must contain at most 50 string fields, with 120-character keys and 500-character values." }, { status: 400 });
   const aegis = await checkAegis([{ role: "user", content: body.content }], tenantId);
+  projectFoundationTraffic(tenantId, "memory", aegis);
   if (!aegis.allowed) return Response.json({ error: aegis.reason ?? "Aegis blocked this memory write." }, { status: 403, headers: { "X-UIOS-Security": "aegis-blocked" } });
   return Response.json({ record: await memoryStore.save(tenantId, body.content.trim(), metadata) }, { status: 201 });
 }

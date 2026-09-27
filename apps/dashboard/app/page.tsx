@@ -1,7 +1,5 @@
-import { UniverseExperience } from "./components/universe-experience";
+import { FoundationExperience } from "./components/foundation-experience";
 
 export default function HomePage() {
-  return (
-    <UniverseExperience />
-  );
+  return <FoundationExperience />;
 }
