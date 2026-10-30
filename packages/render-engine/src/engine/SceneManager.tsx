@@ -6,7 +6,7 @@ import { Bloom, EffectComposer } from "@react-three/postprocessing";
 import { type ReactNode, useCallback, useState } from "react";
 import * as THREE from "three";
 import { CosmosSandbox } from "../systems/CosmosSandbox";
-import { CameraManager } from "./CameraManager";
+import { CameraManager, type CameraHome } from "./CameraManager";
 import { PerformanceManager } from "./PerformanceManager";
 import { RenderLoop } from "./RenderLoop";
 
@@ -17,11 +17,15 @@ export function DefaultRenderScene() {
 export type SceneManagerProps = {
   children?: ReactNode;
   className?: string;
+  cameraHome?: CameraHome;
+  cameraNear?: number;
+  cameraFar?: number;
+  cameraPosition?: [number, number, number];
   onPerformanceChange?: (factor: number) => void;
   onRegionChange?: (regionId: string | null, arrived: boolean, label?: string) => void;
 };
 
-export function SceneManager({ children, className, onPerformanceChange }: SceneManagerProps) {
+export function SceneManager({ children, className, cameraHome, cameraNear = 2, cameraFar = 8000000, cameraPosition = [2400, 2800, 14800], onPerformanceChange }: SceneManagerProps) {
   const [dpr, setDpr] = useState(1.5);
   const [performanceFactor, setPerformanceFactor] = useState(1);
   const handlePerformance = useCallback(
@@ -36,7 +40,7 @@ export function SceneManager({ children, className, onPerformanceChange }: Scene
   return (
     <Canvas
       className={className}
-      camera={{ far: 8000000, fov: 50, near: 2, position: [2400, 2800, 14800] }}
+      camera={{ far: cameraFar, fov: cameraHome?.fov ?? 50, near: cameraNear, position: cameraPosition }}
       dpr={dpr}
       frameloop="always"
       gl={{ antialias: true, alpha: false, logarithmicDepthBuffer: true, powerPreference: "high-performance" }}
@@ -57,7 +61,7 @@ export function SceneManager({ children, className, onPerformanceChange }: Scene
       <PerformanceManager factor={performanceFactor}>
         <color attach="background" args={["#01030a"]} />
         <RenderLoop>
-          <CameraManager />
+          <CameraManager home={cameraHome} />
           {children ?? <DefaultRenderScene />}
           <EffectComposer multisampling={0} enableNormalPass={false}>
             <Bloom intensity={1.38} luminanceThreshold={0.2} luminanceSmoothing={0.22} mipmapBlur />

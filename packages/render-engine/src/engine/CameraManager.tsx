@@ -7,20 +7,39 @@ import { type ElementRef, useLayoutEffect, useRef } from "react";
 import * as THREE from "three";
 
 const HOME_TARGET = new THREE.Vector3(0, 0, 0);
-const HOME_POSITION = new THREE.Vector3(2400, 2800, 14800);
+const DEFAULT_HOME = new THREE.Vector3(2400, 2800, 14800);
+const DEFAULT_INTRO = new THREE.Vector3(8000, 18000, 64000);
 
-export function CameraManager() {
+export type CameraHome = {
+  position?: [number, number, number];
+  intro?: [number, number, number];
+  fov?: number;
+  minDistance?: number;
+  maxDistance?: number;
+  introDuration?: number;
+};
+
+export function CameraManager({ home }: { home?: CameraHome }) {
   const camera = useThree((state) => state.camera);
   const perspectiveCamera = camera as THREE.PerspectiveCamera;
   const controls = useRef<ElementRef<typeof OrbitControls>>(null);
   const landing = useRef<gsap.core.Timeline | null>(null);
   const isFlying = useRef(true);
 
+  const homeX = home?.position?.[0] ?? DEFAULT_HOME.x;
+  const homeY = home?.position?.[1] ?? DEFAULT_HOME.y;
+  const homeZ = home?.position?.[2] ?? DEFAULT_HOME.z;
+  const introX = home?.intro?.[0] ?? DEFAULT_INTRO.x;
+  const introY = home?.intro?.[1] ?? DEFAULT_INTRO.y;
+  const introZ = home?.intro?.[2] ?? DEFAULT_INTRO.z;
+  const homeFov = home?.fov ?? 50;
+  const introDuration = home?.introDuration ?? 3.1;
+
   useLayoutEffect(() => {
     if (!controls.current) return;
-    camera.position.set(8000, 18000, 64000);
+    camera.position.set(introX, introY, introZ);
     controls.current.target.set(0, 0, 0);
-    perspectiveCamera.fov = 58;
+    perspectiveCamera.fov = homeFov + 8;
     perspectiveCamera.updateProjectionMatrix();
     controls.current.update();
     landing.current = gsap.timeline({
@@ -29,17 +48,17 @@ export function CameraManager() {
         isFlying.current = false;
       },
     });
-    landing.current.to(camera.position, { x: HOME_POSITION.x, y: HOME_POSITION.y, z: HOME_POSITION.z, duration: 3.1 }, 0);
-    landing.current.to(controls.current.target, { x: HOME_TARGET.x, y: HOME_TARGET.y, z: HOME_TARGET.z, duration: 3.1 }, 0);
+    landing.current.to(camera.position, { x: homeX, y: homeY, z: homeZ, duration: introDuration }, 0);
+    landing.current.to(controls.current.target, { x: HOME_TARGET.x, y: HOME_TARGET.y, z: HOME_TARGET.z, duration: introDuration }, 0);
     landing.current.to(perspectiveCamera, {
-      fov: 50,
-      duration: 2.6,
+      fov: homeFov,
+      duration: Math.max(1.2, introDuration - 0.5),
       onUpdate: () => perspectiveCamera.updateProjectionMatrix(),
     }, 0.2);
     return () => {
       landing.current?.kill();
     };
-  }, [camera, perspectiveCamera]);
+  }, [camera, homeFov, homeX, homeY, homeZ, introDuration, introX, introY, introZ, perspectiveCamera]);
 
   return (
     <OrbitControls
@@ -50,8 +69,8 @@ export function CameraManager() {
       enablePan
       enableRotate
       enableZoom
-      maxDistance={5200000}
-      minDistance={120}
+      maxDistance={home?.maxDistance ?? 5200000}
+      minDistance={home?.minDistance ?? 120}
       onStart={() => {
         landing.current?.kill();
         isFlying.current = false;

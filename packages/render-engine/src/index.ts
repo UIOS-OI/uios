@@ -1,4 +1,4 @@
-export { CameraManager } from "./engine/CameraManager";
+export { CameraManager, type CameraHome } from "./engine/CameraManager";
 export {
   PerformanceManager,
   usePerformanceBudget,
@@ -54,6 +54,12 @@ export { ParticleSystem, type ParticleSystemProps } from "./systems/ParticleSyst
 export { RegionSystem, type RegionSystemProps, type RenderRegion } from "./systems/RegionSystem";
 export { SpatialHtml, orientationTowardOrigin, type SpatialHtmlProps } from "./systems/SpatialHtml";
 export { CosmosSandbox } from "./systems/CosmosSandbox";
+export {
+  FoundationUniverse,
+  type FoundationTrafficSample,
+  type FoundationUniverseLink,
+  type FoundationUniverseProps,
+} from "./systems/FoundationUniverse";
 
 export { crystalFragmentShader, crystalVertexShader } from "./shaders/Crystal";
 export { energyFragmentShader, energyVertexShader } from "./shaders/Energy";

@@ -1,5 +1,6 @@
 import { NextRequest } from "next/server";
 import { analytics, getModelRouter } from "../../lib/platform-services";
+import { projectFoundationTraffic } from "../../lib/foundation-universe";
 import { checkAegis, checkRateLimit, estimateUnits, getPlanLimit, getUsage, recordUsage, rejectCrossOriginMutation, rejectInvalidApiKey, requireRole, resolveTenantId } from "../../lib/runtime";
 import { randomUUID } from "node:crypto";
 
@@ -25,9 +26,14 @@ export async function POST(request: NextRequest) {
   }
 
   const tenantId = await resolveTenantId(request);
+  const trafficKind = request.headers.get("authorization")?.startsWith("Bearer ") ? "api" : "prompt";
   const rate = checkRateLimit(tenantId);
-  if (!rate.allowed) return Response.json({ error: "UIOS request rate limit reached.", retryAfterSeconds: rate.retryAfterSeconds }, { status: 429, headers: { "Retry-After": String(rate.retryAfterSeconds), "X-UIOS-RateLimit": "exceeded" } });
+  if (!rate.allowed) {
+    projectFoundationTraffic(tenantId, trafficKind, { allowed: false, reason: "Rate limit" });
+    return Response.json({ error: "UIOS request rate limit reached.", retryAfterSeconds: rate.retryAfterSeconds }, { status: 429, headers: { "Retry-After": String(rate.retryAfterSeconds), "X-UIOS-RateLimit": "exceeded" } });
+  }
   const aegis = await checkAegis(messages, tenantId);
+  projectFoundationTraffic(tenantId, trafficKind, aegis);
   if (!aegis.allowed) { await analytics.track(tenantId, "aegis.request.blocked", { reason: aegis.reason ?? "policy-blocked" }); return Response.json({ error: aegis.reason ?? "Aegis blocked this request." }, { status: 403, headers: { "X-UIOS-Security": "aegis-blocked" } }); }
   const units = estimateUnits(messages);
   const planLimit = await getPlanLimit(tenantId);

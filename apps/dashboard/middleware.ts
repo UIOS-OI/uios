@@ -156,5 +156,7 @@ export const config = {
     "/api/workflows/:path*",
     "/api/analytics/:path*",
     "/api/plugins/:path*",
+    "/api/foundation",
+    "/api/foundation/:path*",
   ],
 };
