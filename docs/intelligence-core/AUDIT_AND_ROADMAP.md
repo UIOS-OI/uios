@@ -161,6 +161,8 @@ Token counts will initially be estimated (chars/≈3.5) and then calibrated agai
 
 ## 6. Phased roadmap
 
+> **Superseded ordering (2026-11-12):** Phases 1–7 below are folded into the staged plan in [`LIVING_UNIVERSE_PLAN.md`](LIVING_UNIVERSE_PLAN.md) §3. Their content still applies; follow that document for sequencing.
+
 Each phase is independently shippable, keeps the Universe working, and ends with the AGENTS.md verification set (typecheck, build, smoke, provider-smoke, audit, security-scan, E2E) plus new tests for the phase.
 
 ### Phase 0: Stabilize the foundation (small, prerequisite)

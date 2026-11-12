@@ -32,6 +32,8 @@ The service packages under `services/` and shared contracts under `packages/` ar
 
 The long-term creative and technical contract is defined in `docs/GENESIS_ENGINE.md`. Delivery is milestone-based so the engine gains camera, streaming, current, recursive-world, and region-environment capabilities without collapsing them into one untestable scene rewrite.
 
+> **Current state (2026-11-12):** `/` renders `FoundationExperience` (the Aegis Unified foundation scene) and `/render-engine` renders `CosmosSandbox`. `UniverseExperience`, `GalaxyScene`, `SolarSystem`, `RegionSystem`, and `UniverseManager` are not mounted on any route; the sections below describe those earlier stages. The planned Living Universe is specified in `docs/intelligence-core/LIVING_UNIVERSE_PLAN.md`.
+
 The `/` experience is a continuous R3F world, not a set of page transitions. The existing cinematic video remains the entry sequence and fades over an already-mounted universe so the GPU scene is not created during the handoff. The prior `IntelligenceUniverse`, `CinematicFabric`, and `ProductLanding` implementations remain in the repository as earlier visual stages; `UniverseExperience` is the active homepage composition.
 
 `packages/render-engine` is presentation-only. It owns the reusable canvas, centralized render-task loop, camera direction, adaptive performance budget, spatial interaction field, world topology, sector streaming, particles, neural pathways, intelligence currents, semantic regions, lighting, shaders, and post-processing. It contains no tenant authorization or provider-health decisions.

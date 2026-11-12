@@ -58,10 +58,53 @@ Each entry records the context, the decision, alternatives considered, and what 
 
 ## D-09: Routing policy is explicit and local-first in development
 
-- **Status:** Accepted (owner, 2026-11-12)
+- **Status:** Superseded by D-11 (owner brief, 2026-11-12). Originally accepted 2026-11-12
 - **Decision:** `UIOS_ROUTING_POLICY = local-only | local-first | cloud-allowed`. Development defaults to `local-first`. Production requires an explicit per-tenant setting before any cloud fallback. Failover happens on request error, not only on the health precheck.
 
 ## D-10: The Universe receives aggregates only
 
 - **Status:** Proposed
 - **Decision:** `/api/intelligence/overview` exposes counts, states, versions, and health. It never exposes memory content, prompts, or tool payloads. Detail views are DOM overlays that call authenticated, tenant-scoped endpoints. This extends the existing `universe-events.ts` rule that activity is payload-free.
+
+## D-11: No automatic cloud fallback; consent with disclosure (supersedes D-09)
+
+- **Status:** Accepted (owner brief, 2026-11-12)
+- **Decision:** Local Ollama is the default and only automatic route. If local execution fails, the request fails visibly. A cloud call requires explicit consent, per request or as a time-boxed workspace grant, after the UI discloses the provider, the model, and the exact context segments (resource URNs and sizes) to be sent. Every cloud call is traced with `destination: remote:<host>`. This applies in all environments.
+
+## D-12: Canonical resource identity is a source-derived URN
+
+- **Status:** Proposed
+- **Context:** Current universe bodies use array-index IDs and request-time timestamps.
+- **Decision:** Every universe object is a `resources` row keyed by a stable URN derived from its source (`github:owner/repo#pr:1`, `fs:<rootId>:<path>`, `uios:conversation:<uuid>`, …). Source timestamps are stored only when the source provides them; first/last-seen times are recorded separately. Relations carry `evidence: declared | observed | inferred` and a confidence. Project merges keep aliases so old URNs resolve.
+
+## D-13: Live Trace shows only server-recorded events
+
+- **Status:** Proposed
+- **Context:** `uios:activity` browser events carry hard-coded routes chosen by UI components, not observed paths.
+- **Decision:** Live Trace renders only `trace_events` written by the server pipeline (`observer: uios`) or explicitly self-reported by an external agent (`observer: reported:<agent>`, visually distinct). Browser-side activity events are retired as a trace source. Each operation family declares telemetry coverage, so gaps show as "not instrumented" or "unavailable". Events store metadata only (sizes, counts, hashes, exit codes), never content or secrets.
+
+## D-14: Recording is independent of visualization
+
+- **Status:** Proposed
+- **Decision:** Instrumentation is always on, at low cost, in the execution pipeline. The Live Trace toggle only subscribes to and renders the stream, so it cannot change execution behavior. Historical playback reads the same stored events.
+
+## D-15: New universe at `/universe`, existing scenes preserved
+
+- **Status:** Proposed
+- **Decision:** Project solar systems are built at `/universe` using the existing engine shell and reusable systems (orbit math, camera, performance, streaming, info panel). `/` (Aegis foundation) and `/render-engine` stay unchanged until parity and an owner decision. Rendering uses levels of detail and paged graph queries; objects beyond the current level are shown as counts.
+
+## D-16: Connectors are scoped, read-first, and metadata-first
+
+- **Status:** Proposed
+- **Decision:** Local folders are indexed only under user-registered roots, honoring `.gitignore` and secret-pattern exclusions (`.env*`, keys, credentials). Content indexing is opt-in per root. Git is read via `execFile("git", …)`, with no shell. GitHub uses a read-only token held on the user's machine. Write operations go only through the tool runtime with approval (D-08).
+
+## D-17: Memory items carry a provenance class
+
+- **Status:** Proposed
+- **Decision:** Each memory has a class: `verified_fact`, `user_instruction`, `approved_decision`, `model_suggestion`, or `assumption`. Only user instructions and observed facts auto-commit (consistent with D-05). Corrections create a new version linked to the old one, with nothing overwritten. All providers retrieve through the same permission-checked context assembler.
+
+## D-18: Keyword search uses SQLite FTS5
+
+- **Status:** Proposed
+- **Context:** FTS5 is available in Node's built-in SQLite (verified on Node 22.23.4: `CREATE VIRTUAL TABLE … USING fts5` and `bm25()` work).
+- **Decision:** Resource metadata, memory, and indexed content use FTS5 with BM25 ranking, combined with per-model vectors and relation traversal. FTS5 availability is checked at startup on the deployed Node version, and failure is reported rather than silently degraded.
