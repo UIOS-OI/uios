@@ -158,12 +158,18 @@ export default async function run(test, ctx) {
     
     if (res.status === 202) {
       const jobId = res.body?.jobId;
-      // Wait for status to reflect retries or failed
-      let statusRes = await fetchJson(`/api/ingestion/status?jobId=${jobId}`, {
-        headers: { cookie: ctx.cookie }
-      });
-      if (statusRes.body?.status === "completed") {
-        throw new Error("Job should have failed or retried, but completed successfully");
+      // The mock gateway returns 503 for this content; the worker retries, then must fail the job.
+      let finalStatus = null;
+      for (let attempt = 0; attempt < 40; attempt += 1) {
+        const statusRes = await fetchJson(`/api/ingestion/status?jobId=${jobId}`, {
+          headers: { cookie: ctx.cookie }
+        });
+        finalStatus = statusRes.body?.status;
+        if (finalStatus === "completed" || finalStatus === "failed") break;
+        await new Promise((resolve) => setTimeout(resolve, 250));
+      }
+      if (finalStatus !== "failed") {
+        throw new Error(`Expected the job to fail after embedding retries, got status ${finalStatus}`);
       }
     } else if (res.status !== 404 && res.status !== 500) {
       throw new Error(`Expected failure state or 202 trigger, got status ${res.status}`);

@@ -1,6 +1,6 @@
 import { createServer } from "node:http";
 import { spawn } from "node:child_process";
-import { rmSync, writeFileSync } from "node:fs";
+import { mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 
 // 1. Setup paths and state DB cleanups
@@ -40,9 +40,17 @@ const gateway = createServer((request, response) => {
     
     // Gateway Embeddings
     if (request.url === "/v1/embeddings" || request.url === "/embeddings") {
+      // Simulated provider outage for TC-INGEST-07 lives in the mock, not in application code.
+      if (body.includes("fail-generation-content")) {
+        response.writeHead(503, { "content-type": "application/json" });
+        response.end(JSON.stringify({ error: "mock embedding outage" }));
+        return;
+      }
+      let inputs = [];
+      try { const parsed = JSON.parse(body); inputs = Array.isArray(parsed.input) ? parsed.input : [parsed.input]; } catch { inputs = [""]; }
       response.writeHead(200, { "content-type": "application/json" });
       response.end(JSON.stringify({
-        data: [{ embedding: Array(1536).fill(0.1) }]
+        data: inputs.map((_, index) => ({ index, embedding: Array(1536).fill(0.1) }))
       }));
       return;
     }
@@ -176,14 +184,18 @@ try {
     failed: failedCount,
     tests: testResults.map(t => ({ id: t.id, name: t.name, status: t.status, error: t.error }))
   };
+  const reportDir = new URL("../.agents/worker_e2e/", import.meta.url);
+  mkdirSync(reportDir, { recursive: true });
   writeFileSync(
-    new URL("../.agents/worker_e2e/test-report.json", import.meta.url),
+    new URL("test-report.json", reportDir),
     JSON.stringify(report, null, 2),
     "utf8"
   );
   
+  if (failedCount > 0) process.exitCode = 1;
 } catch (err) {
   console.error("Runner execution failed:", err);
+  process.exitCode = 1;
 } finally {
   // 6. Cleanup
   console.log("Shutting down processes and cleaning database files...");

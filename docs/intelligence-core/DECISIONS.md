@@ -29,20 +29,20 @@ Each entry records the context, the decision, alternatives considered, and what 
 
 ## D-04: Embeddings are stored with their model and dimension, and are never fabricated
 
-- **Status:** Proposed
+- **Status:** Accepted (owner, 2026-11-12). Phase 0 implements the no-fabrication and provenance parts; the per-model `memory_vectors` table arrives in Phase 2
 - **Context:** Current ingestion writes constant `0.1` vectors when no embedder exists. The Postgres column is fixed at 1536 dimensions; `nomic-embed-text` produces 768.
 - **Decision:** Store vectors in `memory_vectors(memory_id, model, dims, vector)`. Search only within one model's vectors. A record without a vector is `unembedded` and is found lexically. Apply `nomic-embed-text` task prefixes (`search_document:` / `search_query:`).
 - **Revisit when:** a single platform-wide embedding model is mandated.
 
 ## D-05: Learning means governed, evidence-backed records, not model weight updates
 
-- **Status:** Proposed
-- **Decision:** Observations → candidate learnings (with evidence links, confidence, extractor model and prompt version) → review policy → committed memory, procedure, or skill draft. Every transition is written to a hash-chained append-only audit ledger. Model-inferred items require approval by default.
+- **Status:** Accepted (owner, 2026-11-12)
+- **Decision:** Observations → candidate learnings (with evidence links, confidence, extractor model and prompt version) → review policy → committed memory, procedure, or skill draft. Every transition is written to a hash-chained append-only audit ledger. Model-inferred items always require approval; only facts the user states explicitly may auto-commit (owner decision, 2026-11-12).
 - **Alternatives:** LoRA or fine-tuning on the local machine. This is out of scope: it is hard to audit, hard to revert, and hard to run on this hardware.
 
 ## D-06: Persistent identity is approved, versioned configuration
 
-- **Status:** Proposed
+- **Status:** Accepted (owner, 2026-11-12)
 - **Decision:** A global base charter (versioned in the repository) plus a per-tenant overlay stored in the intelligence store. Each version is hash-chained and activated only with an owner/admin approval token. The identity is injected as the first context segment. The product describes it as configuration, not sentience.
 
 ## D-07: One approval primitive for identity, skills, tools, and learnings
@@ -58,7 +58,7 @@ Each entry records the context, the decision, alternatives considered, and what 
 
 ## D-09: Routing policy is explicit and local-first in development
 
-- **Status:** Proposed
+- **Status:** Accepted (owner, 2026-11-12)
 - **Decision:** `UIOS_ROUTING_POLICY = local-only | local-first | cloud-allowed`. Development defaults to `local-first`. Production requires an explicit per-tenant setting before any cloud fallback. Failover happens on request error, not only on the health precheck.
 
 ## D-10: The Universe receives aggregates only

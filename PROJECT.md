@@ -3,7 +3,7 @@
 ## Architecture
 - Relational & Vector state persistence layer in `apps/dashboard/app/lib/state-store.ts` supporting PostgreSQL and pgvector.
 - SSO/Aegis Auth middleware boundary check wrapper (`withAuth` or Edge-compatible middleware).
-- Asynchronous event-driven document ingestion system utilizing BullMQ/Redis, pdf-parse, and SSE status streaming.
+- Asynchronous document ingestion using an in-process queue (`app/lib/ingestion-queue.ts`), pdf-parse, and SSE status streaming. `bullmq` is a declared dependency but is not used yet; jobs do not survive a restart.
 - Model embedding capability integrated into `GatewayModelProvider`.
 
 ## Milestones
@@ -13,7 +13,7 @@
 | 2 | Model Embedding Integration | Add `embed()` to `GatewayModelProvider` and export it in contracts. | None | DONE |
 | 3 | PostgreSQL & pgvector Store | Transition `state-store.ts` to async PostgreSQL & pgvector schema. | M2 | DONE |
 | 4 | Security Middleware | Implement SSO / Aegis fail-closed middleware/wrapper validation. | M3 | DONE |
-| 5 | Asynchronous Ingestion | Implement document upload, BullMQ background worker, embedding generation, pgvector storage, and SSE real-time notifications. | M3, M4 | DONE |
+| 5 | Asynchronous Ingestion | Implement document upload, in-process background worker (BullMQ not yet wired), embedding generation, pgvector storage, and SSE real-time notifications. | M3, M4 | DONE |
 | 6 | Integration & Verification | Run the full E2E test suite and pass all checks (smoke tests, launch audit, security scan). | M1, M5 | DONE |
 | 7 | UIOS Render Engine | Add a standalone modular R3F engine package with independent visual systems, GLSL shaders, and an isolated visual verification route. | None | DONE |
 | 8 | Evolutionary Intelligence Universe | Promote the reusable engine to `/`, preserve the cinematic entry, add large-scale camera travel, semantic regions, adaptive quality, sector streaming, flowing currents, and authenticated provider/memory topology growth. | M7 | DONE |
@@ -27,13 +27,15 @@
 | 16 | NASA camera motion | Add a cancellable deep-space landing push, preserve user dolly distance at Root, and keep inertial zoom, orbit, and pan active after every coordinate-space rebase. | M15 | DONE |
 | 17 | Hosted knowledge planets | Preserve repository file paths while deterministically placing each Memory artifact beneath its Policies, Engineering, Sales, HR, Finance, or Customer host planet. | M16 | DONE |
 | 18 | Sacred geometry host worlds | Translate the nested-orb reference into deterministic crystalline, mandala, cellular-lattice, and orbital-flower planet shells with luminous cores and independent internal rotation. | M17 | DONE |
+| 19 | Intelligence Core Phase 0 — Foundation hardening | Patch prod dependency advisories, remove fabricated embeddings and the ingestion test hook, strip and re-sign internal auth headers, fix E2E runner exit code, add service unit tests. See `docs/intelligence-core/`. | None | DONE |
+| 20 | Intelligence Core Phase 1 — Local Ollama inference | Native Ollama provider, capability-aware local-first routing, tool-call support in the gateway contract. | M19 | PLANNED |
 
 ## Code Layout
 - apps/dashboard/app/lib/state-store.ts - Persistence
 - apps/dashboard/app/lib/runtime.ts - Auth & middleware
 - services/gateway-provider/src/index.ts - Model provider with embed()
 - apps/dashboard/app/api/ingestion - Ingestion endpoints (upload, status)
-- apps/dashboard/app/lib/ingestion-worker.ts - BullMQ worker
+- apps/dashboard/app/lib/ingestion-queue.ts - In-process ingestion queue and worker
 - packages/render-engine - Presentation-only WebGL engine and independent rendering systems
 - apps/dashboard/app/render-engine - Isolated render-engine verification surface
 - apps/dashboard/app/components/universe-experience.tsx - Active cinematic-to-universe homepage shell

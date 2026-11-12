@@ -29,6 +29,10 @@ export class GatewayModelProvider implements ModelProvider {
     this.timeoutMs = options.timeoutMs ?? 30_000;
   }
 
+  get embeddingModelId(): string {
+    return this.embeddingModel;
+  }
+
   async chat(request: ChatRequest): Promise<ChatResponse> {
     const response = await this.request(request, false);
     const json = await response.json() as { id?: string; model?: string; choices?: Array<{ message?: { content?: string }; finish_reason?: ChatResponse["finishReason"] }>; usage?: ChatResponse["usage"] };

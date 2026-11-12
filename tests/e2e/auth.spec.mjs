@@ -1,4 +1,5 @@
-import { fetchJson, signWorkspaceId, signWorkspaceIdWithCustomSecret } from "./helpers.mjs";
+import { createHmac } from "node:crypto";
+import { fetchJson, signWorkspaceId, signWorkspaceIdWithCustomSecret, workspaceSecret } from "./helpers.mjs";
 
 export default async function run(test, ctx) {
   test("TC-AUTH-01", "Valid Signed Cookie Session Access", async () => {
@@ -229,6 +230,37 @@ export default async function run(test, ctx) {
       
       if (res.status !== 401) {
         throw new Error(`Expected 401 Unauthorized for malformed Auth header "${format}", got status ${res.status}`);
+      }
+    }
+  });
+
+  test("TC-AUTH-11", "Client-Supplied Internal Auth Headers Are Stripped", async () => {
+    if (!ctx.workspaceId) {
+      throw new Error("workspaceId not in context");
+    }
+    // Forge headers with a *valid* signature using the server secret. Only middleware stripping
+    // inbound x-uios-* headers can stop this, so a 401 proves the strip happens on every API route.
+    const expiresAt = Math.floor(Date.now() / 1000) + 60;
+    const derived = createHmac("sha256", workspaceSecret).update("uios-internal-auth-headers-v1").digest();
+    const signature = createHmac("sha256", derived).update(`v1|${ctx.workspaceId}|owner|${expiresAt}`).digest("base64url");
+    const forged = {
+      "x-uios-tenant-id": ctx.workspaceId,
+      "x-uios-role": "owner",
+      "x-uios-auth-expires": String(expiresAt),
+      "x-uios-signature": signature,
+    };
+    // Legacy (pre-Phase 0) format: HMAC(secret, "tenant:role") with no expiry.
+    const legacy = {
+      "x-uios-tenant-id": ctx.workspaceId,
+      "x-uios-role": "owner",
+      "x-uios-signature": createHmac("sha256", workspaceSecret).update(`${ctx.workspaceId}:owner`).digest("base64url"),
+    };
+    for (const [label, headers] of [["current", forged], ["legacy", legacy]]) {
+      for (const path of ["/api/workspace", "/api/usage", "/api/agent/run"]) {
+        const res = await fetchJson(path, { method: path === "/api/agent/run" ? "POST" : "GET", headers, ...(path === "/api/agent/run" ? { body: JSON.stringify({ prompt: "x" }) } : {}) });
+        if (res.status !== 401) {
+          throw new Error(`Expected 401 for forged ${label} internal headers on ${path}, got ${res.status}`);
+        }
       }
     }
   });

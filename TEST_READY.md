@@ -18,28 +18,25 @@ corepack pnpm --filter @uios/dashboard build && corepack pnpm test:e2e
 
 ## E2E Test Coverage Summary
 
-A total of **39 test cases** are implemented across the 4-tier test hierarchy.
+A total of **40 test cases** are implemented across the 4-tier test hierarchy (39 original cases plus `TC-AUTH-11`, added in Intelligence Core Phase 0).
 
 | Test Tier | Total Cases | Target Areas |
 |---|---|---|
 | **Tier 1 (Feature Coverage)** | 15 | Relational/Vector Persistence, Authentication Middleware, Asynchronous Ingestion |
-| **Tier 2 (Boundary & Corner cases)** | 15 | Fallbacks, SQL Injection, Expiry, Revocations, Corrupted Payloads |
+| **Tier 2 (Boundary & Corner cases)** | 16 | Fallbacks, SQL Injection, Expiry, Revocations, Corrupted Payloads, forged internal auth headers |
 | **Tier 3 (Cross-Feature Combinations)** | 4 | Ingestion role checks, multi-tenant vector isolation, key revocation mid-job, cascade deletion |
 | **Tier 4 (Real-World Scenarios)** | 5 | End-to-end user workflows, leak attacks, outage recovery, concurrent load stress |
-| **Total** | **39** | |
+| **Total** | **40** | |
 
-## Last Execution Report (2026-07-14)
+## Last Execution Report (2026-11-12, Linux CI-style container, Node 22.23.4)
 
-* **Total Executed:** 39
-* **Passed:** 28
-* **Failed:** 11
+* **Total Executed:** 40
+* **Passed:** 40
+* **Failed:** 0
+* **Runner exit code:** 0
 
-### Analysis of Failures
-The 11 failures are located in the asynchronous document ingestion pipeline and pgvector-specific search endpoints:
-- `TC-INGEST-01`, `TC-INGEST-02`, `TC-INGEST-03`, `TC-INGEST-05`, `TC-INGEST-06`: Failures due to `POST /api/ingestion/upload` and `GET /api/ingestion/status` returning `404 Not Found` (ingestion features not yet implemented by downstream execution tracks).
-- `TC-INGEST-04`: Failure due to `GET /api/ingestion/search` returning `404 Not Found`.
-- `TC-COMB-01`, `TC-COMB-02`, `TC-COMB-03`: Ingestion role verification, isolation, and key revocation checks failed with `404` as the underlying ingestion routes are not present.
-- `TC-COMB-04`: Failed with "Expected 401 Unauthorized after workspace deletion, got status 200" because the deleted tenant cookie remains cryptographically valid and Next.js resolves it with fallback values.
-- `TC-SCEN-01`: Failed at the PDF ingestion step (`404 Not Found`).
+The runner now exits non-zero when any test fails or the runner itself errors, and creates its report directory (`.agents/worker_e2e/`, gitignored) on demand. Before Intelligence Core Phase 0 it always exited 0.
 
-This is the expected baseline behavior. These tests will automatically pass once the ingestion and pgvector tracks complete their respective implementations.
+`TC-INGEST-07` now waits for the job to reach a terminal state and requires `failed`. The embedding outage is simulated by the mock gateway (HTTP 503), not by application code.
+
+`TC-AUTH-11` forges internal `x-uios-*` auth headers with a valid signature, in both the current and the pre-Phase 0 format, and requires 401 on `/api/workspace`, `/api/usage`, and `/api/agent/run`. Negative control: against the pre-Phase 0 middleware and runtime, this test fails with `/api/workspace` returning 200.

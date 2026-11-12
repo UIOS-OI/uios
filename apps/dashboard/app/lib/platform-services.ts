@@ -32,7 +32,7 @@ export function getGatewayProvider(): GatewayModelProvider | null {
   const apiKey = process.env.UIOS_AI_GATEWAY_KEY ?? process.env.AI_GATEWAY_API_KEY ?? process.env.VERCEL_AI_GATEWAY_API_KEY;
   const model = process.env.UIOS_DEFAULT_MODEL;
   if (!apiKey || !model) { gatewayProvider = null; return gatewayProvider; }
-  gatewayProvider = createGatewayProvider({ id: "uios-gateway", baseUrl: process.env.UIOS_AI_GATEWAY_URL ?? "https://ai-gateway.vercel.sh/v1", apiKey, defaultModel: model });
+  gatewayProvider = createGatewayProvider({ id: "uios-gateway", baseUrl: process.env.UIOS_AI_GATEWAY_URL ?? "https://ai-gateway.vercel.sh/v1", apiKey, defaultModel: model, embeddingModel: process.env.UIOS_EMBEDDING_MODEL || undefined });
   return gatewayProvider;
 }
 

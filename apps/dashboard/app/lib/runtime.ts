@@ -46,6 +46,34 @@ export function verifyWorkflowApproval(token: string, tenantId: string, workflow
   } catch { return false; }
 }
 
+const INTERNAL_AUTH_PURPOSE = "uios-internal-auth-headers-v1";
+const apiKeyRoles = new Set<ApiKeyRole>(["owner", "admin", "developer", "viewer"]);
+
+/**
+ * Verifies the auth headers set by middleware.ts. Middleware strips any client-supplied copies on
+ * every /api route, signs with a purpose-derived key, and bounds validity to a short expiry.
+ */
+export function verifyInternalAuthHeaders(headers: Headers, nowSeconds = Math.floor(Date.now() / 1000)): { tenantId: string; role: ApiKeyRole } | null {
+  const tenantId = headers.get("x-uios-tenant-id");
+  const role = headers.get("x-uios-role");
+  const signature = headers.get("x-uios-signature");
+  const expiresRaw = headers.get("x-uios-auth-expires");
+  if (!tenantId || !role || !signature || !expiresRaw) return null;
+  if (!apiKeyRoles.has(role as ApiKeyRole)) return null;
+  const expiresAt = Number(expiresRaw);
+  if (!Number.isInteger(expiresAt) || expiresAt <= nowSeconds || expiresAt > nowSeconds + 300) return null;
+  const secret = workspaceSecret ?? (process.env.NODE_ENV === "production" ? null : developmentSecret);
+  if (!secret) return null;
+  const derived = createHmac("sha256", secret).update(INTERNAL_AUTH_PURPOSE).digest();
+  const expected = createHmac("sha256", derived).update(`v1|${tenantId}|${role}|${expiresAt}`).digest("base64url");
+  try {
+    if (!timingSafeEqual(Buffer.from(signature), Buffer.from(expected))) return null;
+  } catch {
+    return null;
+  }
+  return { tenantId, role: role as ApiKeyRole };
+}
+
 export async function resolveTenantId(request: NextRequest): Promise<string> {
   return (await resolveAuth(request)).tenantId;
 }
@@ -53,25 +81,8 @@ export async function resolveTenantId(request: NextRequest): Promise<string> {
 export async function resolveAuth(request: NextRequest): Promise<{ tenantId: string; role: ApiKeyRole }> {
   const fallback = (): { tenantId: string; role: ApiKeyRole } => process.env.NODE_ENV === "production" ? { tenantId: "__unauthenticated__", role: "viewer" } : { tenantId: "local-development", role: "owner" };
 
-  const tenantIdHeader = request.headers.get("x-uios-tenant-id");
-  const roleHeader = request.headers.get("x-uios-role");
-  const signatureHeader = request.headers.get("x-uios-signature");
-
-  if (tenantIdHeader && roleHeader && signatureHeader) {
-    const secret = workspaceSecret ?? (process.env.NODE_ENV === "production" ? null : developmentSecret);
-    if (secret) {
-      const expectedSignature = createHmac("sha256", secret).update(`${tenantIdHeader}:${roleHeader}`).digest("base64url");
-      let matches = false;
-      try {
-        matches = timingSafeEqual(Buffer.from(signatureHeader), Buffer.from(expectedSignature));
-      } catch {
-        matches = false;
-      }
-      if (matches) {
-        return { tenantId: tenantIdHeader, role: roleHeader as ApiKeyRole };
-      }
-    }
-  }
+  const forwarded = verifyInternalAuthHeaders(request.headers);
+  if (forwarded) return forwarded;
 
   const authorization = request.headers.get("authorization");
   if (authorization?.startsWith("Bearer ")) {

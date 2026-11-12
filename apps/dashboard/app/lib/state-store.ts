@@ -30,6 +30,9 @@ let state: State = isPostgres ? { workspaces: {}, apiKeys: {}, usage: {}, usageE
 
 let initPromise: Promise<void> | null = null;
 
+/** Width of the legacy memory_records.embedding column. Per-model dimensions arrive with the Phase 2 intelligence store. */
+const POSTGRES_VECTOR_DIMS = 1536;
+
 async function ensureDbInitialized(): Promise<void> {
   if (!pool) return;
   if (initPromise) return initPromise;
@@ -176,8 +179,17 @@ function persist() {
 export async function saveMemory(record: MemoryRecord): Promise<void> {
   if (pool) {
     await ensureDbInitialized();
-    const metadata = JSON.stringify(record.metadata);
-    const embedding = (record as any).embedding ? pgvector.toSql((record as any).embedding) : null;
+    const vector = (record as MemoryRecord & { embedding?: number[] }).embedding;
+    const recordMetadata = { ...record.metadata };
+    let embedding: string | null = null;
+    if (vector && vector.length === POSTGRES_VECTOR_DIMS) {
+      embedding = pgvector.toSql(vector);
+    } else if (vector) {
+      // The legacy column is fixed-width; never pad or truncate a vector to fit (DECISIONS.md D-04).
+      recordMetadata.embeddingStatus = "unembedded";
+      recordMetadata.embeddingReason = `dimension-mismatch:${vector.length}`;
+    }
+    const metadata = JSON.stringify(recordMetadata);
     await pool.query(
       `INSERT INTO memory_records (id, tenant_id, content, metadata, created_at, embedding)
        VALUES ($1, $2, $3, $4, $5, $6)
@@ -222,30 +234,36 @@ export async function listMemories(): Promise<MemoryRecord[]> {
   return Object.values(state.memories).flat();
 }
 
-export async function searchMemories(tenantId: string, embedding: number[], limit: number, queryText?: string): Promise<MemoryRecord[]> {
+export async function searchMemories(tenantId: string, embedding: number[] | null, limit: number, queryText?: string): Promise<MemoryRecord[]> {
   if (pool) {
     await ensureDbInitialized();
+    if (embedding && embedding.length === POSTGRES_VECTOR_DIMS) {
+      const result = await pool.query(
+        `SELECT id, tenant_id AS "tenantId", content, metadata, created_at AS "createdAt", embedding
+         FROM memory_records
+         WHERE tenant_id = $1 AND embedding IS NOT NULL
+         ORDER BY embedding <=> $2 ASC
+         LIMIT $3`,
+        [tenantId, pgvector.toSql(embedding), limit]
+      );
+      return result.rows.map((row) => ({
+        id: row.id,
+        tenantId: row.tenantId,
+        content: row.content,
+        metadata: typeof row.metadata === "string" ? JSON.parse(row.metadata) : row.metadata,
+        createdAt: row.createdAt,
+        embedding: row.embedding ? (typeof row.embedding === "string" ? JSON.parse(row.embedding) : row.embedding) : undefined,
+      }));
+    }
     const result = await pool.query(
-      `SELECT id, tenant_id AS "tenantId", content, metadata, created_at AS "createdAt", embedding
-       FROM memory_records
-       WHERE tenant_id = $1 AND embedding IS NOT NULL
-       ORDER BY embedding <=> $2 ASC
-       LIMIT $3`,
-      [tenantId, pgvector.toSql(embedding), limit]
+      `SELECT id, tenant_id AS "tenantId", content, metadata, created_at AS "createdAt"
+       FROM memory_records WHERE tenant_id = $1 ORDER BY created_at ASC`,
+      [tenantId]
     );
-    return result.rows.map((row) => ({
-      id: row.id,
-      tenantId: row.tenantId,
-      content: row.content,
-      metadata: typeof row.metadata === "string" ? JSON.parse(row.metadata) : row.metadata,
-      createdAt: row.createdAt,
-      embedding: row.embedding ? (typeof row.embedding === "string" ? JSON.parse(row.embedding) : row.embedding) : undefined,
-    }));
+    const records = result.rows.map((row) => ({ id: row.id, tenantId: row.tenantId, content: row.content, metadata: typeof row.metadata === "string" ? JSON.parse(row.metadata) : row.metadata, createdAt: row.createdAt }));
+    return rankLexically(records, queryText ?? "", limit);
   }
 
-  const text = queryText ?? "";
-  const terms = new Set(text.toLowerCase().split(/\W+/).filter((term) => term.length > 2));
-  
   let records: MemoryRecord[] = [];
   if (sqlite) {
     const rows = sqlite.prepare("SELECT id, tenant_id AS tenantId, content, metadata, created_at AS createdAt FROM memory_records WHERE tenant_id = ?").all(tenantId) as Array<Omit<MemoryRecord, "metadata"> & { metadata: string }>;
@@ -253,11 +271,14 @@ export async function searchMemories(tenantId: string, embedding: number[], limi
   } else {
     records = state.memories[tenantId] ?? [];
   }
+  return rankLexically(records, queryText ?? "", limit);
+}
 
+function rankLexically(records: MemoryRecord[], text: string, limit: number): MemoryRecord[] {
+  const terms = new Set(text.toLowerCase().split(/\W+/).filter((term) => term.length > 2));
   if (terms.size === 0) {
     return records.slice(-limit).reverse();
   }
-
   return records
     .map((record) => {
       const score = [...terms].filter((term) => record.content.toLowerCase().includes(term)).length;

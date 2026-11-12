@@ -15,18 +15,15 @@ export async function GET(request: NextRequest) {
   const limitParam = request.nextUrl.searchParams.get("limit");
   const limit = limitParam ? Math.min(Math.max(parseInt(limitParam, 10) || 10, 1), 100) : 10;
 
-  let embedding = Array(1536).fill(0.1);
+  // Without a real query vector, search falls back to lexical ranking; it never uses a placeholder vector.
+  let embedding: number[] | null = null;
   const provider = getGatewayProvider();
-  if (provider && q.trim()) {
+  if (provider?.embed && q.trim()) {
     try {
-      if (provider.embed) {
-        const embeddings = await provider.embed([q]);
-        if (embeddings && embeddings[0]) {
-          embedding = embeddings[0];
-        }
-      }
+      const [vector] = await provider.embed([q]);
+      if (Array.isArray(vector) && vector.length > 0 && vector.every((value) => Number.isFinite(value))) embedding = vector;
     } catch (err) {
-      console.warn("[Search API] Embedding generation failed, falling back to keyword matching:", err);
+      console.warn("[Search API] Embedding generation failed, falling back to keyword matching:", err instanceof Error ? err.message : err);
     }
   }
 

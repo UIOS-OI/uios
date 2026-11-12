@@ -93,43 +93,47 @@ function segmentText(text: string, chunkSize = 500, overlap = 50): string[] {
   return chunks;
 }
 
-async function getEmbeddingsWithRetry(chunks: string[], retries = 3, delayMs = 1000): Promise<number[][]> {
+export type EmbeddingBatch =
+  | { status: "embedded"; model: string; dims: number; vectors: number[][] }
+  | { status: "unembedded"; reason: string };
+
+function assertValidVectors(vectors: unknown, expectedCount: number): number[][] {
+  if (!Array.isArray(vectors) || vectors.length !== expectedCount) {
+    throw new Error(`Embedding provider returned ${Array.isArray(vectors) ? vectors.length : "no"} vectors for ${expectedCount} inputs.`);
+  }
+  let dims = -1;
+  for (const vector of vectors) {
+    if (!Array.isArray(vector) || vector.length === 0 || !vector.every((value) => typeof value === "number" && Number.isFinite(value))) {
+      throw new Error("Embedding provider returned a malformed vector.");
+    }
+    if (dims === -1) dims = vector.length;
+    else if (vector.length !== dims) throw new Error("Embedding provider returned vectors with inconsistent dimensions.");
+  }
+  return vectors as number[][];
+}
+
+// Never substitutes placeholder vectors: without an embedder, chunks are stored as
+// "unembedded" and remain reachable through lexical search (see DECISIONS.md D-04).
+async function getEmbeddingsWithRetry(chunks: string[], retries = 3, delayMs = 1000): Promise<EmbeddingBatch> {
   const provider = getGatewayProvider();
-
-  // If the mock gateway is expected to fail or simulation is triggered
-  if (chunks.some(chunk => chunk.includes("fail-generation-content"))) {
-    // TC-INGEST-07 asks to simulate embedding outage
-    throw new Error("Simulated embedding provider outage.");
+  if (!provider || !provider.embed) {
+    return { status: "unembedded", reason: provider ? "provider-has-no-embed" : "no-embedding-provider" };
   }
 
-  // If no provider is available, return dummy embeddings for local/fallback testing
-  if (!provider) {
-    return chunks.map(() => Array(1536).fill(0.1));
-  }
-
-  // We should batch requests if there are many chunks (e.g., batch size of 16)
   const batchSize = 16;
   const allEmbeddings: number[][] = [];
 
   for (let i = 0; i < chunks.length; i += batchSize) {
     const batch = chunks.slice(i, i + batchSize);
-    let lastError: any = null;
+    let lastError: unknown = null;
     let success = false;
 
     for (let attempt = 1; attempt <= retries; attempt++) {
       try {
-        if (!provider.embed) {
-          throw new Error("Provider does not support embedding.");
-        }
-        const embeddings = await provider.embed(batch);
-        const result: number[][] = [];
-        for (let j = 0; j < batch.length; j++) {
-          result.push(embeddings[j] || embeddings[0] || Array(1536).fill(0.1));
-        }
-        allEmbeddings.push(...result);
+        allEmbeddings.push(...assertValidVectors(await provider.embed(batch), batch.length));
         success = true;
         break;
-      } catch (err: any) {
+      } catch (err) {
         lastError = err;
         if (attempt < retries) {
           await new Promise((resolve) => setTimeout(resolve, delayMs * attempt));
@@ -138,11 +142,13 @@ async function getEmbeddingsWithRetry(chunks: string[], retries = 3, delayMs = 1
     }
 
     if (!success) {
-      throw new Error(`Embedding retrieval failed after ${retries} attempts. Last error: ${lastError?.message}`);
+      throw new Error(`Embedding retrieval failed after ${retries} attempts. Last error: ${lastError instanceof Error ? lastError.message : "unknown"}`);
     }
   }
 
-  return allEmbeddings;
+  const dims = allEmbeddings[0].length;
+  if (allEmbeddings.some((vector) => vector.length !== dims)) throw new Error("Embedding provider returned vectors with inconsistent dimensions.");
+  return { status: "embedded", model: provider.embeddingModelId, dims, vectors: allEmbeddings };
 }
 
 async function processNextJob() {
@@ -183,25 +189,29 @@ async function processNextJob() {
     job.progress = 80;
     ingestionEvents.emit("status", { jobId, status: "processing", progress: 80 });
 
-    // 5. Save chunk records to the database
+    // 5. Save chunk records with honest embedding provenance
     for (let i = 0; i < chunks.length; i++) {
-      const chunk = chunks[i];
-      const embedding = embeddings[i];
-      
-      const record = {
+      const metadata: Record<string, string> = {
+        fileName: job.fileName,
+        chunkIndex: String(i),
+        totalChunks: String(chunks.length),
+        embeddingStatus: embeddings.status,
+      };
+      if (embeddings.status === "embedded") {
+        metadata.embeddingModel = embeddings.model;
+        metadata.embeddingDims = String(embeddings.dims);
+      } else {
+        metadata.embeddingReason = embeddings.reason;
+      }
+      const record: MemoryRecord & { embedding?: number[] } = {
         id: `chunk_${randomUUID()}`,
         tenantId: job.tenantId,
-        content: chunk,
-        metadata: {
-          fileName: job.fileName,
-          chunkIndex: String(i),
-          totalChunks: String(chunks.length),
-        },
+        content: chunks[i],
+        metadata,
         createdAt: new Date().toISOString(),
-        embedding,
+        ...(embeddings.status === "embedded" ? { embedding: embeddings.vectors[i] } : {}),
       };
-      
-      await saveMemory(record as unknown as MemoryRecord);
+      await saveMemory(record);
     }
 
     // 6. Complete

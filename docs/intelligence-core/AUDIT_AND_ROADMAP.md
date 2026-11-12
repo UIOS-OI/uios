@@ -1,6 +1,6 @@
 # UIOS Intelligence Core — Repository Audit and Implementation Roadmap
 
-Status: **proposal for owner review**. No Intelligence Core code has been written yet.
+Status: **approved by owner 2026-11-12**; Phase 0 in progress.
 Audit date: 2026-11-12. Audited commit: `780ddad` (merge of PR #1), branch `claude/bold-curie-xvcxpf`, clean working tree.
 
 Companion decision log: [`DECISIONS.md`](DECISIONS.md).
@@ -16,7 +16,7 @@ Everything in this section was run in a Linux cloud container (Node 22.23.4, pnp
 | Install | `corepack pnpm install --frozen-lockfile` | OK (build script for `msgpackr-extract` ignored by pnpm policy) |
 | Typecheck | `corepack pnpm --filter @uios/dashboard typecheck` | Pass, 0 errors |
 | Production build | `corepack pnpm --filter @uios/dashboard build` | Pass |
-| E2E suite | `corepack pnpm test:e2e` | **39/39 pass**, but the runner then throws `ENOENT` writing `.agents/worker_e2e/test-report.json` (gitignored directory that does not exist in a fresh clone), so the process exits non-zero |
+| E2E suite | `corepack pnpm test:e2e` | **39/39 pass**, but the runner then throws `ENOENT` writing `.agents/worker_e2e/test-report.json` (gitignored directory that does not exist in a fresh clone). *Correction (Phase 0):* the runner swallows that error and also never sets a failing exit code when tests fail, so it always exited 0 |
 | Provider smoke | `corepack pnpm provider-smoke` | Pass (mock OpenAI-compatible gateway) |
 | Smoke | `node scripts/smoke.mjs` against `next start` | Pass with `UIOS_WORKSPACE_SECRET` set. Without it, workspace creation correctly returns 503 (fail-closed) |
 | Security scan | `corepack pnpm security-scan` | 204 files, 0 findings |
@@ -95,7 +95,7 @@ Severity reflects impact on the Intelligence Core work, not a formal CVSS rating
 
 **P2: hygiene**
 
-8. The E2E runner exits non-zero after all tests pass because of the missing report directory.
+8. The E2E runner crashes writing its report after the tests finish, and it exits 0 even when tests fail, so CI cannot detect E2E failures.
 9. `TEST_READY.md` is stale, and `PROJECT.md` says "BullMQ" although the queue is in-process.
 10. `.playwright-cli/*.yml` page snapshots are committed.
 11. `state-store.ts` is a 613-line three-backend file. New Intelligence Core tables should not be added to it (see D-03).
@@ -172,6 +172,20 @@ Each phase is independently shippable, keeps the Universe working, and ends with
 - Add a unit-test runner for `services/*` (Node's built-in `node:test` with `tsx`, so there is no new framework dependency). Today services have no unit tests.
 
 **Exit:** all checks green; zero fabricated vectors; E2E exit code 0.
+
+**Phase 0 result (2026-11-12, Linux container, Node 22.23.4): complete.**
+
+| Item | Change | Evidence |
+|---|---|---|
+| Dependencies | `next` ^15.5.29; `postcss` override 8.5.32; `sharp` ≥0.35.5 (accepted by Next 15.5.29) and `fflate` ≥0.6.11 via range overrides; removed the unused `ai` package | `pnpm audit --prod`: no known vulnerabilities (was 25) |
+| Embeddings | No placeholder vectors. Chunks without an embedder are stored with `embeddingStatus: unembedded`; wrong vector counts or malformed vectors fail the job; `embeddingModel`/`embeddingDims` recorded; Postgres never pads or truncates to fit `vector(1536)`; search without a query vector ranks lexically. `UIOS_EMBEDDING_MODEL` added | E2E ingestion tests pass against a mock that now returns one vector per input |
+| Test hook | `fail-generation-content` handling moved from app code to the mock gateway (HTTP 503) | `TC-INGEST-07` now waits for a terminal state and requires `failed` |
+| Internal auth headers | Middleware runs on all `/api/*` routes and strips client-supplied `x-uios-*` headers; signature uses a purpose-derived key, a role allowlist and a 60 s expiry | New `TC-AUTH-11`. Negative control on the previous code: `/api/workspace` accepted forged legacy headers (200) |
+| E2E runner | Creates its report directory; exits 1 on any failure (previously always 0) | Negative control run exited 1 |
+| Unit tests | `corepack pnpm test:unit`: `node:test` with native type stripping, no new dependencies; router, agent engine, workflow engine, memory, plugin registry, gateway provider | 31/31 pass; tenant-filter mutation in memory search is caught |
+| Full set | typecheck, build, unit, E2E, provider-smoke, smoke, audit, security-scan | all pass (E2E 40/40, smoke 63/63 checks, security-scan 0 findings) |
+
+Not done in Phase 0, by design: the Postgres column is still `vector(1536)` (per-model vector storage arrives with the Phase 2 store); `bullmq` remains an unused declared dependency; the middleware still verifies API keys with an HTTP self-call (item 6).
 
 ### Phase 1: Local inference via Ollama (gateway)
 
@@ -258,9 +272,9 @@ Each phase is independently shippable, keeps the Universe working, and ends with
 | Integrated GPU (Iris Xe): Ollama will likely run on CPU, so latency may be seconds per response | Measure in Phase 1; stream responses; keep extraction and consolidation off the request path |
 | Single Next.js process for background learning | In-process first; separate worker only on measured need (D-01) |
 | `node:sqlite` is still marked experimental in Node 22 | Already in use; pin Node major in `engines`; keep the adapter boundary so the store can change |
-| **Owner decision:** should model-inferred learnings ever auto-commit? | Proposed default: never. Only explicit user statements auto-commit |
-| **Owner decision:** is the identity per tenant, or one global UIOS identity with tenant overlays? | Proposed: global base charter (repo-versioned) + per-tenant overlay (approved) |
-| **Owner decision:** is cloud fallback allowed by default when Ollama is down? | Proposed: `local-first` in development, explicit opt-in per tenant in production |
+| Should model-inferred learnings ever auto-commit? | **Decided (owner, 2026-11-12):** never. Only explicit user statements auto-commit (D-05) |
+| Identity per tenant, or global with tenant overlays? | **Decided (owner, 2026-11-12):** global base charter (repo-versioned) + per-tenant approved overlay (D-06) |
+| Cloud fallback when Ollama is down? | **Decided (owner, 2026-11-12):** `local-first` in development; explicit per-tenant opt-in in production (D-09) |
 
 ## 9. Proposed first implementation slice (after approval)
 

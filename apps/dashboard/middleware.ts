@@ -42,26 +42,35 @@ async function verifyHmacBase64Url(payload: string, signature: string, secret: s
   return safeCompare(signature, expectedSignature);
 }
 
-async function signHeaders(tenantId: string, role: string, secret: string): Promise<string> {
-  const payload = `${tenantId}:${role}`;
-  const encoder = new TextEncoder();
-  const keyData = encoder.encode(secret);
-  const key = await crypto.subtle.importKey(
-    "raw",
-    keyData,
-    { name: "HMAC", hash: { name: "SHA-256" } },
-    false,
-    ["sign"]
-  );
-  const signatureBuffer = await crypto.subtle.sign(
-    "HMAC",
-    key,
-    encoder.encode(payload)
-  );
-  return arrayBufferToBase64Url(signatureBuffer);
+const INTERNAL_AUTH_PURPOSE = "uios-internal-auth-headers-v1";
+const INTERNAL_AUTH_TTL_SECONDS = 60;
+const INTERNAL_AUTH_HEADERS = ["x-uios-tenant-id", "x-uios-role", "x-uios-signature", "x-uios-auth-expires"];
+
+async function hmacBytes(key: BufferSource, payload: string): Promise<ArrayBuffer> {
+  const cryptoKey = await crypto.subtle.importKey("raw", key, { name: "HMAC", hash: { name: "SHA-256" } }, false, ["sign"]);
+  return crypto.subtle.sign("HMAC", cryptoKey, new TextEncoder().encode(payload));
+}
+
+// Purpose-derived key: internal headers never share a key with session cookies or approval tokens.
+// Must stay byte-for-byte compatible with verifyInternalAuthHeaders in app/lib/runtime.ts.
+async function signHeaders(tenantId: string, role: string, expiresAt: number, secret: string): Promise<string> {
+  const derived = await hmacBytes(new TextEncoder().encode(secret), INTERNAL_AUTH_PURPOSE);
+  return arrayBufferToBase64Url(await hmacBytes(derived, `v1|${tenantId}|${role}|${expiresAt}`));
+}
+
+const protectedPrefixes = ["/api/chat", "/api/memory", "/api/keys", "/api/usage", "/api/workflows", "/api/analytics", "/api/plugins", "/api/foundation"];
+
+function isProtected(pathname: string): boolean {
+  return protectedPrefixes.some((prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`));
 }
 
 export async function middleware(request: NextRequest) {
+  // Client-supplied internal auth headers are never trusted, on any API route.
+  const requestHeaders = new Headers(request.headers);
+  for (const header of INTERNAL_AUTH_HEADERS) requestHeaders.delete(header);
+  if (!isProtected(request.nextUrl.pathname)) {
+    return NextResponse.next({ request: { headers: requestHeaders } });
+  }
   try {
     const authorization = request.headers.get("authorization");
     const signed = request.cookies.get("uios_workspace")?.value;
@@ -130,11 +139,12 @@ export async function middleware(request: NextRequest) {
     }
     
     // Sign the forwarded headers to prevent spoofing.
-    const signature = await signHeaders(authInfo.tenantId, authInfo.role, secret);
-    
-    const requestHeaders = new Headers(request.headers);
+    const expiresAt = Math.floor(Date.now() / 1000) + INTERNAL_AUTH_TTL_SECONDS;
+    const signature = await signHeaders(authInfo.tenantId, authInfo.role, expiresAt, secret);
+
     requestHeaders.set("x-uios-tenant-id", authInfo.tenantId);
     requestHeaders.set("x-uios-role", authInfo.role);
+    requestHeaders.set("x-uios-auth-expires", String(expiresAt));
     requestHeaders.set("x-uios-signature", signature);
     
     return NextResponse.next({
@@ -148,15 +158,5 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: [
-    "/api/chat/:path*",
-    "/api/memory/:path*",
-    "/api/keys/:path*",
-    "/api/usage/:path*",
-    "/api/workflows/:path*",
-    "/api/analytics/:path*",
-    "/api/plugins/:path*",
-    "/api/foundation",
-    "/api/foundation/:path*",
-  ],
+  matcher: ["/api/:path*"],
 };
