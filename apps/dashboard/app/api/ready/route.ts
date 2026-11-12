@@ -6,7 +6,7 @@ export function GET() {
   const production = process.env.NODE_ENV === "production";
   const checks = {
     workspaceSecret: !production || Boolean(process.env.UIOS_WORKSPACE_SECRET),
-    gateway: !production || Boolean(process.env.UIOS_AI_GATEWAY_KEY && process.env.UIOS_DEFAULT_MODEL),
+    modelProvider: !production || Boolean(process.env.UIOS_OLLAMA_CHAT_MODEL || (process.env.UIOS_AI_GATEWAY_KEY && process.env.UIOS_DEFAULT_MODEL)),
     durableDatabase: !production || Boolean(process.env.UIOS_STATE_DB),
     aegis: !production || (process.env.UIOS_AEGIS_REQUIRED === "true" ? Boolean(process.env.UIOS_AEGIS_URL && process.env.UIOS_AEGIS_KEY && process.env.UIOS_AEGIS_FAIL_CLOSED === "true") : true),
   };

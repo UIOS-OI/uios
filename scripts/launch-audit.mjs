@@ -11,8 +11,10 @@ required("Aegis URL", Boolean(process.env.UIOS_AEGIS_URL), "UIOS_AEGIS_URL is re
 required("Aegis key", Boolean(process.env.UIOS_AEGIS_KEY), "UIOS_AEGIS_KEY is required in production");
 required("Aegis required mode", process.env.UIOS_AEGIS_REQUIRED === "true", "UIOS_AEGIS_REQUIRED=true is required in production");
 required("Aegis fail-closed mode", process.env.UIOS_AEGIS_FAIL_CLOSED === "true", "UIOS_AEGIS_FAIL_CLOSED=true is required in production");
-required("AI gateway key", Boolean(process.env.UIOS_AI_GATEWAY_KEY || process.env.AI_GATEWAY_API_KEY || process.env.VERCEL_AI_GATEWAY_API_KEY), "Configure a gateway API key");
-required("default model", Boolean(process.env.UIOS_DEFAULT_MODEL), "UIOS_DEFAULT_MODEL is required in production");
+const localModel = Boolean(process.env.UIOS_OLLAMA_CHAT_MODEL);
+const gatewayModel = Boolean((process.env.UIOS_AI_GATEWAY_KEY || process.env.AI_GATEWAY_API_KEY || process.env.VERCEL_AI_GATEWAY_API_KEY) && process.env.UIOS_DEFAULT_MODEL);
+required("model provider", localModel || gatewayModel, "Configure UIOS_OLLAMA_CHAT_MODEL (local) or a gateway key plus UIOS_DEFAULT_MODEL");
+required("routing policy", ["local-only", "consent", "cloud-allowed", undefined, ""].includes(process.env.UIOS_ROUTING_POLICY), "UIOS_ROUTING_POLICY must be local-only, consent, or cloud-allowed");
 required("durable database", Boolean(process.env.UIOS_STATE_DB), "UIOS_STATE_DB must point to a managed persistent database/volume");
 required("security disclosure contact", /^(mailto:|https:\/\/)/i.test(process.env.UIOS_SECURITY_CONTACT ?? ""), "UIOS_SECURITY_CONTACT must be a mailto: or HTTPS URL in production");
 required("security disclosure policy", /^(\/|https:\/\/)/i.test(process.env.UIOS_SECURITY_POLICY_URL ?? ""), "UIOS_SECURITY_POLICY_URL must be an internal path or HTTPS URL in production");

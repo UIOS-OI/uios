@@ -24,6 +24,12 @@ before(async () => {
         response.end("data: [DONE]\n\n");
         return;
       }
+      if (request.url === "/v1/chat/completions" && body?.tools) {
+        const bad = body.model === "bad-args";
+        response.writeHead(200, { "content-type": "application/json" });
+        response.end(JSON.stringify({ id: "t1", model: body.model, choices: [{ message: { content: null, tool_calls: [{ id: "call_1", type: "function", function: { name: "lookup", arguments: bad ? "{not json" : "{\"q\":\"uios\"}" } }] }, finish_reason: "tool_calls" }], usage: { prompt_tokens: 7, completion_tokens: 2, total_tokens: 9 } }));
+        return;
+      }
       if (request.url === "/v1/chat/completions") {
         if (body?.model === "rejected-model") { response.writeHead(429); response.end(); return; }
         response.writeHead(200, { "content-type": "application/json" });
@@ -87,4 +93,33 @@ test("health reports reachable and unreachable gateways", async () => {
   const health = await unreachable.health();
   assert.equal(health.healthy, false);
   assert.ok(health.message);
+});
+
+test("is remote by default and reports its host", () => {
+  const p = provider();
+  assert.equal(p.locality, "remote");
+  assert.equal(p.destination, new URL(baseUrl).host);
+});
+
+test("sends tools in OpenAI format and parses tool calls and usage", async () => {
+  const response = await provider().chat({
+    messages: [
+      { role: "user", content: "find uios" },
+      { role: "assistant", content: "", toolCalls: [{ id: "prev", name: "lookup", input: { q: "x" } }] },
+      { role: "tool", name: "lookup", toolCallId: "prev", content: "[]" },
+    ],
+    tools: [{ name: "lookup", description: "look up", parameters: { type: "object" } }],
+  });
+  const sent = captured.at(-1)!.body as { tools: Array<{ type: string; function: { name: string } }>; messages: Array<Record<string, unknown>> };
+  assert.equal(sent.tools[0].type, "function");
+  assert.equal(sent.tools[0].function.name, "lookup");
+  assert.equal((sent.messages[1].tool_calls as Array<{ function: { arguments: string } }>)[0].function.arguments, JSON.stringify({ q: "x" }));
+  assert.equal(sent.messages[2].tool_call_id, "prev");
+  assert.equal(response.finishReason, "tool_call");
+  assert.deepEqual(response.toolCalls, [{ id: "call_1", name: "lookup", input: { q: "uios" } }]);
+  assert.deepEqual(response.usage, { inputTokens: 7, outputTokens: 2, totalTokens: 9 });
+});
+
+test("rejects malformed tool-call arguments instead of guessing", async () => {
+  await assert.rejects(provider().chat({ messages: [], model: "bad-args", tools: [{ name: "lookup", description: "", parameters: {} }] }), /malformed JSON arguments for tool lookup/);
 });

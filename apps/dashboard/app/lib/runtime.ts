@@ -46,6 +46,41 @@ export function verifyWorkflowApproval(token: string, tenantId: string, workflow
   } catch { return false; }
 }
 
+/**
+ * Generic purpose-bound token (DECISIONS.md D-07). The signing key is derived per purpose, so a token
+ * minted for one purpose can never verify for another, and none share a key with session cookies.
+ */
+export type PurposeClaims = Record<string, string | number>;
+
+function purposeKey(purpose: string): Buffer | null {
+  const secret = workspaceSecret ?? (process.env.NODE_ENV === "production" ? null : developmentSecret);
+  if (!secret) return null;
+  return createHmac("sha256", secret).update(`uios-purpose-token-v1:${purpose}`).digest();
+}
+
+export function signPurposeToken(purpose: string, claims: PurposeClaims, ttlSeconds: number): string {
+  const key = purposeKey(purpose);
+  if (!key) throw new Error("UIOS_WORKSPACE_SECRET must be configured in production.");
+  const exp = Math.floor(Date.now() / 1000) + Math.min(Math.max(Math.floor(ttlSeconds), 30), 3600);
+  const payload = Buffer.from(JSON.stringify({ ...claims, purpose, exp })).toString("base64url");
+  return `${payload}.${createHmac("sha256", key).update(payload).digest("base64url")}`;
+}
+
+export function verifyPurposeToken(purpose: string, token: string): PurposeClaims | null {
+  const key = purposeKey(purpose);
+  if (!key || typeof token !== "string" || token.length > 4096) return null;
+  const separator = token.lastIndexOf(".");
+  if (separator < 1) return null;
+  const payload = token.slice(0, separator);
+  const expected = createHmac("sha256", key).update(payload).digest("base64url");
+  try { if (!timingSafeEqual(Buffer.from(token.slice(separator + 1)), Buffer.from(expected))) return null; } catch { return null; }
+  try {
+    const claims = JSON.parse(Buffer.from(payload, "base64url").toString("utf8")) as PurposeClaims & { purpose?: string; exp?: number };
+    if (claims.purpose !== purpose || typeof claims.exp !== "number" || claims.exp <= Math.floor(Date.now() / 1000)) return null;
+    return claims;
+  } catch { return null; }
+}
+
 const INTERNAL_AUTH_PURPOSE = "uios-internal-auth-headers-v1";
 const apiKeyRoles = new Set<ApiKeyRole>(["owner", "admin", "developer", "viewer"]);
 

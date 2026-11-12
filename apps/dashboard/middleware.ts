@@ -58,7 +58,7 @@ async function signHeaders(tenantId: string, role: string, expiresAt: number, se
   return arrayBufferToBase64Url(await hmacBytes(derived, `v1|${tenantId}|${role}|${expiresAt}`));
 }
 
-const protectedPrefixes = ["/api/chat", "/api/memory", "/api/keys", "/api/usage", "/api/workflows", "/api/analytics", "/api/plugins", "/api/foundation"];
+const protectedPrefixes = ["/api/chat", "/api/memory", "/api/keys", "/api/usage", "/api/workflows", "/api/analytics", "/api/plugins", "/api/foundation", "/api/trace", "/api/models"];
 
 function isProtected(pathname: string): boolean {
   return protectedPrefixes.some((prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`));

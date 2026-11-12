@@ -6,11 +6,24 @@ const REPO_ROOT = path.resolve(process.cwd(), "../..");
 
 export type UniverseDocument = { path: string; title: string };
 
+/**
+ * Documents readable without a workspace session (DECISIONS.md D-19.4). Everything else in the
+ * catalogue (e.g. docs/intelligence-core, internal prompts) requires a session or API key.
+ */
+const PUBLIC_DOCS = new Set(["docs/ARCHITECTURE.md", "docs/GENESIS_ENGINE.md", "docs/ROADMAP.md"]);
+const PUBLIC_PREFIXES = ["docs/handbook/"];
+
+export function isPublicDocument(relativePath: string): boolean {
+  return ROOT_DOCUMENTS.includes(relativePath) || PUBLIC_DOCS.has(relativePath) || PUBLIC_PREFIXES.some((prefix) => relativePath.startsWith(prefix));
+}
+
+export type DocumentAccess = { includePrivate: boolean };
+
 function titleFromPath(relativePath: string) {
   return path.basename(relativePath, path.extname(relativePath)).replace(/^\d+[_-]?/, "").replace(/[_-]+/g, " ").replace(/\b\w/g, (character) => character.toUpperCase());
 }
 
-export async function listUniverseDocuments(): Promise<UniverseDocument[]> {
+export async function listUniverseDocuments(access: DocumentAccess = { includePrivate: false }): Promise<UniverseDocument[]> {
   const documents: UniverseDocument[] = ROOT_DOCUMENTS.map((relativePath) => ({ path: relativePath, title: titleFromPath(relativePath) }));
   const walk = async (directory: string, prefix: string) => {
     for (const entry of await readdir(directory, { withFileTypes: true })) {
@@ -20,11 +33,11 @@ export async function listUniverseDocuments(): Promise<UniverseDocument[]> {
     }
   };
   await walk(path.join(REPO_ROOT, "docs"), "docs");
-  return documents.sort((a, b) => a.path.localeCompare(b.path));
+  return documents.filter((document) => access.includePrivate || isPublicDocument(document.path)).sort((a, b) => a.path.localeCompare(b.path));
 }
 
-export async function readUniverseDocument(relativePath: string) {
-  const catalog = await listUniverseDocuments();
+export async function readUniverseDocument(relativePath: string, access: DocumentAccess = { includePrivate: false }) {
+  const catalog = await listUniverseDocuments(access);
   const document = catalog.find((entry) => entry.path === relativePath);
   if (!document) return null;
   const absolutePath = path.resolve(REPO_ROOT, relativePath);

@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { checkRateLimit, rejectCrossOriginMutation, rejectUnauthorized, resolveTenantId, signWorkspaceId } from "../../lib/runtime";
 import { deleteWorkspaceData, findWorkspace, saveWorkspace } from "../../lib/state-store";
 import { analytics, memoryStore } from "../../lib/platform-services";
+import { traceStore } from "../../lib/intelligence";
 import { requireRole } from "../../lib/runtime";
 
 export const runtime = "nodejs";
@@ -40,6 +41,7 @@ export async function DELETE(request: NextRequest) {
   const tenantId = await resolveTenantId(request);
   if (tenantId === "local-development") return Response.json({ error: "A named workspace is required for deletion." }, { status: 400 });
   await deleteWorkspaceData(tenantId);
+  traceStore()?.deleteTenant(tenantId);
   await memoryStore.clear(tenantId);
   await analytics.clear(tenantId);
   const response = NextResponse.json({ deleted: true, tenantId, deletedAt: new Date().toISOString() });

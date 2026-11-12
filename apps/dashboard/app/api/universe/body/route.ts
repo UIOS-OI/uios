@@ -1,9 +1,12 @@
 import { NextRequest } from "next/server";
 import { listUniverseDocuments, readUniverseDocument } from "../../../lib/universe-documents";
 
+import { resolveAuth } from "../../../lib/runtime";
+
 export const runtime = "nodejs";
 
 export async function GET(request: NextRequest) {
+  const access = { includePrivate: !(await resolveAuth(request)).tenantId.startsWith("__") };
   const { searchParams } = new URL(request.url);
   const docPath = searchParams.get("path");
   const id = searchParams.get("id");
@@ -13,14 +16,14 @@ export async function GET(request: NextRequest) {
   }
 
   const resolvedPath = docPath ?? id ?? "";
-  const doc = await readUniverseDocument(resolvedPath);
+  const doc = await readUniverseDocument(resolvedPath, access);
 
   if (!doc) {
     // Try matching by scanning catalog
-    const catalog = await listUniverseDocuments();
+    const catalog = await listUniverseDocuments(access);
     const match = catalog.find((d) => d.path === resolvedPath || `doc-${d.path}` === resolvedPath);
     if (!match) return Response.json({ error: "Body not found." }, { status: 404 });
-    const full = await readUniverseDocument(match.path);
+    const full = await readUniverseDocument(match.path, access);
     return Response.json(
       {
         id: `doc-${match.path}`,

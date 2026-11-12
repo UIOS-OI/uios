@@ -2,7 +2,9 @@ import { EventEmitter } from "node:events";
 import { randomUUID } from "node:crypto";
 // @ts-ignore
 import pdf from "pdf-parse";
-import { getGatewayProvider } from "./platform-services";
+import type { TraceContext } from "@uios/trace";
+import { getEmbeddingProvider } from "./platform-services";
+import { startTrace, traceBus } from "./intelligence";
 import { saveMemory } from "./state-store";
 import type { MemoryRecord } from "@uios/contracts";
 
@@ -114,11 +116,10 @@ function assertValidVectors(vectors: unknown, expectedCount: number): number[][]
 
 // Never substitutes placeholder vectors: without an embedder, chunks are stored as
 // "unembedded" and remain reachable through lexical search (see DECISIONS.md D-04).
-async function getEmbeddingsWithRetry(chunks: string[], retries = 3, delayMs = 1000): Promise<EmbeddingBatch> {
-  const provider = getGatewayProvider();
-  if (!provider || !provider.embed) {
-    return { status: "unembedded", reason: provider ? "provider-has-no-embed" : "no-embedding-provider" };
-  }
+async function getEmbeddingsWithRetry(chunks: string[], trace: TraceContext, retries = 3, delayMs = 1000): Promise<EmbeddingBatch> {
+  const selected = getEmbeddingProvider(trace);
+  if (!selected.provider) return { status: "unembedded", reason: selected.reason };
+  const provider = selected.provider;
 
   const batchSize = 16;
   const allEmbeddings: number[][] = [];
@@ -130,7 +131,7 @@ async function getEmbeddingsWithRetry(chunks: string[], retries = 3, delayMs = 1
 
     for (let attempt = 1; attempt <= retries; attempt++) {
       try {
-        allEmbeddings.push(...assertValidVectors(await provider.embed(batch), batch.length));
+        allEmbeddings.push(...assertValidVectors(await provider.embed(batch, "document"), batch.length));
         success = true;
         break;
       } catch (err) {
@@ -148,7 +149,7 @@ async function getEmbeddingsWithRetry(chunks: string[], retries = 3, delayMs = 1
 
   const dims = allEmbeddings[0].length;
   if (allEmbeddings.some((vector) => vector.length !== dims)) throw new Error("Embedding provider returned vectors with inconsistent dimensions.");
-  return { status: "embedded", model: provider.embeddingModelId, dims, vectors: allEmbeddings };
+  return { status: "embedded", model: selected.model, dims, vectors: allEmbeddings };
 }
 
 async function processNextJob() {
@@ -165,6 +166,8 @@ async function processNextJob() {
     return;
   }
 
+  const trace = startTrace(job.tenantId, "uios.ingestion");
+  const ingestSpan = traceBus().start(trace, { operation: "document.ingest", resourceUrn: `uios:upload:${job.id}`, destination: "local", meta: { fileType: job.fileType.slice(0, 80), bytes: buffer.length } });
   try {
     // 1. Update status to processing
     job.status = "processing";
@@ -185,11 +188,12 @@ async function processNextJob() {
     ingestionEvents.emit("status", { jobId, status: "processing", progress: 50 });
 
     // 4. Retrieve embeddings with retries/batching
-    const embeddings = await getEmbeddingsWithRetry(chunks);
+    const embeddings = await getEmbeddingsWithRetry(chunks, ingestSpan.child());
     job.progress = 80;
     ingestionEvents.emit("status", { jobId, status: "processing", progress: 80 });
 
     // 5. Save chunk records with honest embedding provenance
+    const writeSpan = traceBus().start(ingestSpan.child(), { operation: "memory.write", resourceUrn: `uios:upload:${job.id}`, destination: "local", meta: { chunks: chunks.length, embedded: embeddings.status === "embedded" } });
     for (let i = 0; i < chunks.length; i++) {
       const metadata: Record<string, string> = {
         fileName: job.fileName,
@@ -214,12 +218,15 @@ async function processNextJob() {
       await saveMemory(record);
     }
 
+    writeSpan.end("ok");
+    ingestSpan.end("ok", { chunks: chunks.length, embeddingStatus: embeddings.status });
     // 6. Complete
     job.status = "completed";
     job.progress = 100;
     ingestionEvents.emit("status", { jobId, status: "completed", progress: 100 });
   } catch (error: any) {
     console.error(`[Ingestion Worker] Error processing job ${jobId}:`, error);
+    ingestSpan.end("error", { error: String(error?.message ?? "ingestion failed").slice(0, 160) });
     job.status = "failed";
     job.error = error?.message || "Unknown error occurred";
     ingestionEvents.emit("status", { jobId, status: "failed", progress: job.progress, error: job.error });

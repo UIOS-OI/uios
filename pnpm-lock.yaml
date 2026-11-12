@@ -11,7 +11,14 @@ overrides:
 
 importers:
 
-  .: {}
+  .:
+    devDependencies:
+      '@types/node':
+        specifier: ^22.20.1
+        version: 22.20.1
+      typescript:
+        specifier: ^5.9.3
+        version: 5.9.3
 
   apps/dashboard:
     dependencies:
@@ -36,18 +43,27 @@ importers:
       '@uios/gateway-provider':
         specifier: workspace:*
         version: link:../../services/gateway-provider
+      '@uios/intelligence-store':
+        specifier: workspace:*
+        version: link:../../services/intelligence-store
       '@uios/memory':
         specifier: workspace:*
         version: link:../../services/memory
       '@uios/plugin-registry':
         specifier: workspace:*
         version: link:../../services/plugin-registry
+      '@uios/provider-ollama':
+        specifier: workspace:*
+        version: link:../../services/provider-ollama
       '@uios/render-engine':
         specifier: workspace:*
         version: link:../../packages/render-engine
       '@uios/router':
         specifier: workspace:*
         version: link:../../services/router
+      '@uios/trace':
+        specifier: workspace:*
+        version: link:../../services/trace
       '@uios/workflow-engine':
         specifier: workspace:*
         version: link:../../services/workflow-engine
@@ -177,6 +193,19 @@ importers:
         specifier: ^5.9.0
         version: 5.9.3
 
+  services/intelligence-store:
+    dependencies:
+      '@uios/contracts':
+        specifier: workspace:*
+        version: link:../../packages/contracts
+      '@uios/trace':
+        specifier: workspace:*
+        version: link:../trace
+    devDependencies:
+      typescript:
+        specifier: ^5.9.0
+        version: 5.9.3
+
   services/memory:
     dependencies:
       '@uios/contracts':
@@ -197,7 +226,27 @@ importers:
         specifier: ^5.9.0
         version: 5.9.3
 
+  services/provider-ollama:
+    dependencies:
+      '@uios/contracts':
+        specifier: workspace:*
+        version: link:../../packages/contracts
+    devDependencies:
+      typescript:
+        specifier: ^5.9.0
+        version: 5.9.3
+
   services/router:
+    dependencies:
+      '@uios/contracts':
+        specifier: workspace:*
+        version: link:../../packages/contracts
+    devDependencies:
+      typescript:
+        specifier: ^5.9.0
+        version: 5.9.3
+
+  services/trace:
     dependencies:
       '@uios/contracts':
         specifier: workspace:*

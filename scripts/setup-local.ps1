@@ -4,7 +4,13 @@ $envPath = Join-Path $repo "apps\dashboard\.env.local"
 
 if (Test-Path $envPath) {
   Write-Host "Already exists: $envPath"
-  Write-Host "Preserving it. Review or edit it before starting UIOS."
+  Write-Host "Preserving it. To enable local inference, make sure it contains:"
+  Write-Host "  UIOS_OLLAMA_URL=http://127.0.0.1:11434"
+  Write-Host "  UIOS_OLLAMA_CHAT_MODEL=qwen3.5:2b"
+  Write-Host "  UIOS_OLLAMA_EMBED_MODEL=nomic-embed-text"
+  Write-Host "  UIOS_OLLAMA_NUM_CTX=8192"
+  Write-Host "  UIOS_ROUTING_POLICY=consent"
+  Write-Host "Then verify with: corepack pnpm ollama-smoke"
   exit 0
 }
 
@@ -23,11 +29,24 @@ UIOS_ROUTING_STRATEGY=explicit
 UIOS_AEGIS_REQUIRED=false
 UIOS_AEGIS_FAIL_CLOSED=true
 
-# Add your provider credentials to enable live model responses.
-UIOS_AI_GATEWAY_URL=https://ai-gateway.vercel.sh/v1/chat/completions
+# Local inference (default). Ollama keeps its own model store (e.g. OLLAMA_MODELS on J:).
+UIOS_OLLAMA_URL=http://127.0.0.1:11434
+UIOS_OLLAMA_CHAT_MODEL=qwen3.5:2b
+UIOS_OLLAMA_EMBED_MODEL=nomic-embed-text
+UIOS_OLLAMA_NUM_CTX=8192
+UIOS_OLLAMA_KEEP_ALIVE=10m
+
+# Cloud providers are optional. With UIOS_ROUTING_POLICY=consent, UIOS never sends data to them
+# without asking you first and showing exactly what would be sent.
+UIOS_ROUTING_POLICY=consent
+UIOS_AI_GATEWAY_URL=https://ai-gateway.vercel.sh/v1
 UIOS_AI_GATEWAY_KEY=
 UIOS_DEFAULT_MODEL=
+
+# GitHub connector (Stage 2): fine-grained, read-only token. Never commit this file.
+UIOS_GITHUB_TOKEN=
 "@ | Set-Content -LiteralPath $envPath -Encoding utf8
 
 Write-Host "Created $envPath"
-Write-Host "Next: add UIOS_AI_GATEWAY_KEY and UIOS_DEFAULT_MODEL, then run: corepack pnpm dev"
+Write-Host "Next: corepack pnpm ollama-smoke   (verifies Ollama, qwen3.5:2b and nomic-embed-text)"
+Write-Host "Then: corepack pnpm dev"

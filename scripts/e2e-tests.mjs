@@ -8,9 +8,10 @@ const dashboardDir = fileURLToPath(new URL("../apps/dashboard", import.meta.url)
 const testDbFile = ".uios-data/e2e-tests.sqlite";
 
 function cleanDbFiles() {
-  for (const suffix of ["", "-shm", "-wal"]) {
+  const intelligenceDbFile = testDbFile.replace(/\.sqlite$/, ".intelligence.sqlite");
+  for (const file of [testDbFile, intelligenceDbFile]) for (const suffix of ["", "-shm", "-wal"]) {
     try {
-      rmSync(new URL(`../apps/dashboard/${testDbFile}${suffix}`, import.meta.url), { force: true });
+      rmSync(new URL(`../apps/dashboard/${file}${suffix}`, import.meta.url), { force: true });
     } catch (e) {
       // Ignore
     }
@@ -21,10 +22,59 @@ cleanDbFiles();
 
 // 2. Start Mock Gateway/Aegis Server on Port 4010
 let aegisCalls = 0;
+const mockStats = { gatewayChatCalls: 0, ollamaChatCalls: 0, ollamaEmbedCalls: 0, lastGatewayBody: "" };
 const gateway = createServer((request, response) => {
   let body = "";
   request.on("data", (chunk) => { body += chunk; });
   request.on("end", () => {
+    if (request.url === "/__mock/stats") {
+      response.writeHead(200, { "content-type": "application/json" });
+      response.end(JSON.stringify(mockStats));
+      return;
+    }
+
+    // Mock Ollama native API (local provider)
+    if (request.url === "/api/version") {
+      response.writeHead(200, { "content-type": "application/json" });
+      response.end(JSON.stringify({ version: "0.0.0-e2e-mock" }));
+      return;
+    }
+    if (request.url === "/api/tags") {
+      response.writeHead(200, { "content-type": "application/json" });
+      response.end(JSON.stringify({ models: [{ name: "mock-local:latest" }, { name: "nomic-embed-text:latest" }] }));
+      return;
+    }
+    if (request.url === "/api/show") {
+      const model = (() => { try { return JSON.parse(body).model; } catch { return ""; } })();
+      response.writeHead(200, { "content-type": "application/json" });
+      response.end(JSON.stringify(model.startsWith("nomic") ? { capabilities: ["embedding"], model_info: { "nomic-bert.embedding_length": 768 } } : { capabilities: ["completion", "tools"], model_info: { "mock.context_length": 8192 } }));
+      return;
+    }
+    if (request.url === "/api/embed") {
+      mockStats.ollamaEmbedCalls += 1;
+      if (body.includes("fail-generation-content")) {
+        response.writeHead(503, { "content-type": "application/json" });
+        response.end(JSON.stringify({ error: "mock embedding outage" }));
+        return;
+      }
+      const parsed = JSON.parse(body);
+      response.writeHead(200, { "content-type": "application/json" });
+      response.end(JSON.stringify({ embeddings: parsed.input.map(() => Array(768).fill(0.05)) }));
+      return;
+    }
+    if (request.url === "/api/chat") {
+      mockStats.ollamaChatCalls += 1;
+      if (body.includes("force-local-failure")) {
+        response.writeHead(500, { "content-type": "application/json" });
+        response.end(JSON.stringify({ error: "mock local model crashed" }));
+        return;
+      }
+      response.writeHead(200, { "content-type": "application/x-ndjson" });
+      response.write(JSON.stringify({ model: "mock-local", message: { role: "assistant", content: "local " }, done: false }) + "\n");
+      response.end(JSON.stringify({ model: "mock-local", message: { role: "assistant", content: "reply" }, done: true, done_reason: "stop", prompt_eval_count: 9, eval_count: 2 }) + "\n");
+      return;
+    }
+
     // Aegis proxy
     if (request.url === "/api/proxy") {
       aegisCalls += 1;
@@ -64,6 +114,8 @@ const gateway = createServer((request, response) => {
     
     // Gateway Chat completions
     if (request.url === "/v1/chat/completions") {
+      mockStats.gatewayChatCalls += 1;
+      mockStats.lastGatewayBody = body;
       response.writeHead(200, { "content-type": "text/event-stream", connection: "keep-alive" });
       response.write(`data: ${JSON.stringify({ id: "mock-1", model: "mock-model", choices: [{ delta: { content: "UIOS " } }] })}\n\n`);
       setTimeout(() => {
@@ -96,6 +148,10 @@ const envVars = {
   UIOS_AI_GATEWAY_URL: "http://127.0.0.1:4010/v1",
   UIOS_AI_GATEWAY_KEY: "mock-gateway-key",
   UIOS_DEFAULT_MODEL: "mock-model",
+  UIOS_OLLAMA_URL: "http://127.0.0.1:4010",
+  UIOS_OLLAMA_CHAT_MODEL: "mock-local",
+  UIOS_OLLAMA_EMBED_MODEL: "nomic-embed-text",
+  UIOS_ROUTING_POLICY: "consent",
   STRIPE_WEBHOOK_SECRET: "smoke-secret",
   UIOS_STATE_FILE: "",
   UIOS_STATE_DB: testDbFile
@@ -144,11 +200,13 @@ try {
   const runAuth = (await import("../tests/e2e/auth.spec.mjs")).default;
   const runIngestion = (await import("../tests/e2e/ingestion.spec.mjs")).default;
   const runScenarios = (await import("../tests/e2e/scenarios.spec.mjs")).default;
+  const runIntelligence = (await import("../tests/e2e/intelligence.spec.mjs")).default;
   
   await runPersistence(registerTest, ctx);
   await runAuth(registerTest, ctx);
   await runIngestion(registerTest, ctx);
   await runScenarios(registerTest, ctx);
+  await runIntelligence(registerTest, ctx);
   
   console.log(`\n=== Running ${testResults.length} E2E Test Cases ===\n`);
   

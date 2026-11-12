@@ -1,6 +1,7 @@
 import { NextRequest } from "next/server";
 import type { WorkflowDefinition } from "@uios/contracts";
-import { analytics, workflowEngine } from "../../../lib/platform-services";
+import { analytics, createWorkflowEngine } from "../../../lib/platform-services";
+import { startTrace, traceAegis } from "../../../lib/intelligence";
 import { projectFoundationTraffic } from "../../../lib/foundation-universe";
 import { checkAegis, checkRateLimit, estimateUnits, getPlanLimit, getUsage, recordUsage, rejectCrossOriginMutation, rejectInvalidApiKey, requireRole, resolveTenantId, verifyWorkflowApproval } from "../../../lib/runtime";
 
@@ -32,14 +33,17 @@ export async function POST(request: NextRequest) {
   if (serializedInput.length > 100_000) return Response.json({ error: "Workflow input is too large." }, { status: 400 });
   const prompt = typeof input.prompt === "string" ? input.prompt : "";
   if (prompt.length > 50_000) return Response.json({ error: "Workflow input is too large." }, { status: 400 });
+  const trace = startTrace(tenantId, "uios.workflow");
+  const aegisStarted = Date.now();
   const aegis = await checkAegis(prompt ? [{ role: "user", content: prompt }] : [], tenantId);
+  traceAegis(trace, aegis, aegisStarted, "workflow");
   projectFoundationTraffic(tenantId, "workflow", aegis);
   if (!aegis.allowed) return Response.json({ error: aegis.reason ?? "Aegis blocked this workflow." }, { status: 403 });
   const modelNodes = workflow.nodes.filter((node) => node.type === "model").length;
   const units = Math.max(1, modelNodes * estimateUnits(prompt ? [{ role: "user", content: prompt }] : [{ role: "user", content: workflow.name }]));
   const planLimit = await getPlanLimit(tenantId);
   if ((await getUsage(tenantId)).units + units > planLimit) return Response.json({ error: "UIOS usage limit reached." }, { status: 402 });
-  const run = await workflowEngine.run(workflow, input);
+  const run = await createWorkflowEngine(trace).run(workflow, input);
   // Sanitize internal engine error messages before exposing them to callers.
   if (run.status === "failed") {
     const internalError = run.error ?? "";

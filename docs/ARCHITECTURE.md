@@ -12,7 +12,8 @@ Next.js pages + authenticated /api routes
 UIOS runtime boundary
     ├─ workspace auth, RBAC, rate limits, usage
     ├─ Aegis policy boundary
-    ├─ provider-neutral router and gateway
+    ├─ local-first router: Ollama (local) → cloud gateways only by policy or per-request consent
+    ├─ trace bus → intelligence store (SQLite) → /api/trace (history, SSE live stream, coverage)
     ├─ agent, workflow, memory, analytics services
     └─ SQLite/JSON adapter for local development
 ```

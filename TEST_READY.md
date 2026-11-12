@@ -18,7 +18,7 @@ corepack pnpm --filter @uios/dashboard build && corepack pnpm test:e2e
 
 ## E2E Test Coverage Summary
 
-A total of **40 test cases** are implemented across the 4-tier test hierarchy (39 original cases plus `TC-AUTH-11`, added in Intelligence Core Phase 0).
+A total of **52 test cases** are implemented: 39 original cases, `TC-AUTH-11` (Phase 0), and 12 Intelligence Core cases in `tests/e2e/intelligence.spec.mjs` (local routing, cloud consent, trace history/stream/report/coverage, models, private docs, local embeddings).
 
 | Test Tier | Total Cases | Target Areas |
 |---|---|---|
@@ -26,12 +26,15 @@ A total of **40 test cases** are implemented across the 4-tier test hierarchy (3
 | **Tier 2 (Boundary & Corner cases)** | 16 | Fallbacks, SQL Injection, Expiry, Revocations, Corrupted Payloads, forged internal auth headers |
 | **Tier 3 (Cross-Feature Combinations)** | 4 | Ingestion role checks, multi-tenant vector isolation, key revocation mid-job, cascade deletion |
 | **Tier 4 (Real-World Scenarios)** | 5 | End-to-end user workflows, leak attacks, outage recovery, concurrent load stress |
-| **Total** | **40** | |
+| **Intelligence Core (Stage 1)** | 12 | Local-first chat, consent disclosure/tamper/cross-tenant, trace persistence/isolation/SSE/report/coverage, models, private docs, local ingestion embeddings |
+| **Total** | **52** | |
 
-## Last Execution Report (2026-11-12, Linux CI-style container, Node 22.23.4)
+## Last Execution Report (2026-11-12, Stage 1, Linux CI-style container, Node 22.23.4)
 
-* **Total Executed:** 40
-* **Passed:** 40
+The mock server also emulates Ollama's native API (`/api/version`, `/api/tags`, `/api/show`, `/api/chat`, `/api/embed`) and exposes `/__mock/stats`, so tests can prove that no request reached the cloud gateway before consent. Unit tests: `corepack pnpm test:unit` (68 passing).
+
+* **Total Executed:** 52
+* **Passed:** 52
 * **Failed:** 0
 * **Runner exit code:** 0
 

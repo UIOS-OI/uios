@@ -1,13 +1,14 @@
 import { NextRequest } from "next/server";
-import { memoryStore, pluginRegistry } from "../../../lib/platform-services";
+import { getModelRouter, memoryStore } from "../../../lib/platform-services";
 import { resolveAuth } from "../../../lib/runtime";
 import { buildGalaxyDescriptors, listUniverseDocuments } from "../../../lib/universe-documents";
 
 export const runtime = "nodejs";
 
 export async function GET(request: NextRequest) {
-  const documents = await listUniverseDocuments();
   const auth = await resolveAuth(request);
+  const access = { includePrivate: !auth.tenantId.startsWith("__") };
+  const documents = await listUniverseDocuments(access);
 
   if (auth.tenantId.startsWith("__")) {
     const galaxies = buildGalaxyDescriptors(documents, []);
@@ -31,7 +32,7 @@ export async function GET(request: NextRequest) {
       connected: true,
       documents,
       knowledgeCount: records.length,
-      providers: pluginRegistry.listProviders(),
+      providers: getModelRouter()?.listProviders() ?? [],
       galaxies,
     },
     { headers: { "Cache-Control": "private, no-store" } },

@@ -1,4 +1,4 @@
-import type { ChatRequest, ChatResponse, ModelDescriptor, ModelProvider, ProviderHealth } from "@uios/contracts";
+import type { ChatRequest, ChatResponse, ModelCapability, ModelDescriptor, ModelMessage, ModelProvider, ProviderHealth, ProviderLocality, ToolCall } from "@uios/contracts";
 import { randomUUID } from "node:crypto";
 
 export type GatewayProviderOptions = {
@@ -8,12 +8,41 @@ export type GatewayProviderOptions = {
   defaultModel: string;
   embeddingModel?: string;
   timeoutMs?: number;
+  /** Defaults to "remote". Set "local" only for gateways that run on the user's machine. */
+  locality?: ProviderLocality;
 };
+
+type OpenAiToolCall = { id?: string; type?: string; function?: { name?: string; arguments?: string } };
+
+function toOpenAiMessage(message: ModelMessage): Record<string, unknown> {
+  if (message.role === "assistant" && message.toolCalls?.length) {
+    return { role: "assistant", content: message.content || null, tool_calls: message.toolCalls.map((call) => ({ id: call.id, type: "function", function: { name: call.name, arguments: JSON.stringify(call.input) } })) };
+  }
+  if (message.role === "tool") return { role: "tool", tool_call_id: message.toolCallId, content: message.content };
+  return { role: message.role, content: message.content };
+}
+
+function parseToolCalls(calls: OpenAiToolCall[] | undefined): ToolCall[] | undefined {
+  if (!calls?.length) return undefined;
+  return calls.map((call) => {
+    const name = call.function?.name;
+    if (!name) throw new Error("Gateway returned a tool call without a function name.");
+    let input: unknown = {};
+    if (call.function?.arguments) {
+      try { input = JSON.parse(call.function.arguments); } catch { throw new Error(`Gateway returned malformed JSON arguments for tool ${name}.`); }
+    }
+    if (!input || typeof input !== "object" || Array.isArray(input)) throw new Error(`Gateway returned non-object arguments for tool ${name}.`);
+    return { id: call.id ?? randomUUID(), name, input: input as Record<string, unknown> };
+  });
+}
 
 type GatewayChunk = { choices?: Array<{ delta?: { content?: string }; finish_reason?: ChatResponse["finishReason"] }> };
 
 export class GatewayModelProvider implements ModelProvider {
   readonly id: string;
+  readonly locality: ProviderLocality;
+  readonly destination: string;
+  readonly capabilities: ModelCapability[] = ["chat", "stream", "tools", "embed"];
   private readonly baseUrl: string;
   private readonly apiKey: string;
   private readonly defaultModel: string;
@@ -27,6 +56,8 @@ export class GatewayModelProvider implements ModelProvider {
     this.defaultModel = options.defaultModel;
     this.embeddingModel = options.embeddingModel ?? "text-embedding-3-small";
     this.timeoutMs = options.timeoutMs ?? 30_000;
+    this.locality = options.locality ?? "remote";
+    this.destination = new URL(this.baseUrl).host;
   }
 
   get embeddingModelId(): string {
@@ -35,9 +66,12 @@ export class GatewayModelProvider implements ModelProvider {
 
   async chat(request: ChatRequest): Promise<ChatResponse> {
     const response = await this.request(request, false);
-    const json = await response.json() as { id?: string; model?: string; choices?: Array<{ message?: { content?: string }; finish_reason?: ChatResponse["finishReason"] }>; usage?: ChatResponse["usage"] };
+    const json = await response.json() as { id?: string; model?: string; choices?: Array<{ message?: { content?: string | null; tool_calls?: OpenAiToolCall[] }; finish_reason?: string }>; usage?: { prompt_tokens?: number; completion_tokens?: number; total_tokens?: number } & ChatResponse["usage"] };
     const choice = json.choices?.[0];
-    return { id: json.id ?? randomUUID(), provider: this.id, model: json.model ?? request.model ?? this.defaultModel, content: choice?.message?.content ?? "", finishReason: choice?.finish_reason, usage: json.usage };
+    const toolCalls = parseToolCalls(choice?.message?.tool_calls);
+    const finish = toolCalls ? "tool_call" : choice?.finish_reason === "tool_calls" ? "tool_call" : choice?.finish_reason as ChatResponse["finishReason"];
+    const usage = json.usage ? { inputTokens: json.usage.inputTokens ?? json.usage.prompt_tokens, outputTokens: json.usage.outputTokens ?? json.usage.completion_tokens, totalTokens: json.usage.totalTokens ?? json.usage.total_tokens } : undefined;
+    return { id: json.id ?? randomUUID(), provider: this.id, model: json.model ?? request.model ?? this.defaultModel, content: choice?.message?.content ?? "", finishReason: finish, toolCalls, usage };
   }
 
   async *stream(request: ChatRequest): AsyncIterable<ChatResponse> {
@@ -84,8 +118,8 @@ export class GatewayModelProvider implements ModelProvider {
 
   async listModels(): Promise<ModelDescriptor[]> {
     return [
-      { id: this.defaultModel, provider: this.id, capabilities: ["chat", "stream", "tools"] },
-      { id: this.embeddingModel, provider: this.id, capabilities: ["embed"] },
+      { id: this.defaultModel, provider: this.id, capabilities: ["chat", "stream", "tools"], locality: this.locality },
+      { id: this.embeddingModel, provider: this.id, capabilities: ["embed"], locality: this.locality },
     ];
   }
 
@@ -103,9 +137,16 @@ export class GatewayModelProvider implements ModelProvider {
     const response = await fetch(`${this.baseUrl}/chat/completions`, {
       method: "POST",
       headers: { Authorization: `Bearer ${this.apiKey}`, "Content-Type": "application/json", "X-UIOS-Provider": this.id },
-      body: JSON.stringify({ model: request.model ?? this.defaultModel, messages: request.messages, temperature: request.temperature, max_tokens: request.maxTokens, stream }),
+      body: JSON.stringify({
+        model: request.model ?? this.defaultModel,
+        messages: request.messages.map(toOpenAiMessage),
+        temperature: request.temperature,
+        max_tokens: request.maxTokens,
+        stream,
+        ...(request.tools?.length ? { tools: request.tools.map((tool) => ({ type: "function", function: { name: tool.name, description: tool.description, parameters: tool.parameters } })) } : {}),
+      }),
       cache: "no-store",
-      signal: AbortSignal.timeout(this.timeoutMs),
+      signal: request.signal ? AbortSignal.any([request.signal, AbortSignal.timeout(this.timeoutMs)]) : AbortSignal.timeout(this.timeoutMs),
     });
     if (!response.ok) throw new Error(`UIOS provider ${this.id} rejected request (${response.status})`);
     return response;

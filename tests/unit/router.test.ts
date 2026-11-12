@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import type { ChatRequest, ChatResponse, ModelDescriptor, ModelProvider, ProviderHealth } from "../../packages/contracts/src/index.ts";
-import { ModelRouter, createModelRouter } from "../../services/router/src/index.ts";
+import { ModelRouter, NoEligibleProviderError, createModelRouter } from "../../services/router/src/index.ts";
 
 function fakeProvider(id: string, health: Partial<ProviderHealth> = {}): ModelProvider & { healthCalls: number } {
   return {
@@ -75,4 +75,51 @@ test("route returns the provider response with measured latency", async () => {
   assert.equal(response.content, "from a");
   assert.equal(response.model, "m1");
   assert.equal(typeof response.latencyMs, "number");
+});
+
+function localProvider(id: string, health: Partial<ProviderHealth> = {}) {
+  return Object.assign(fakeProvider(id, health), { locality: "local" as const });
+}
+
+test("local providers are ordered before remote ones regardless of registration order", async () => {
+  const router = createModelRouter([fakeProvider("cloud"), localProvider("ollama")]);
+  const { decision } = await router.candidates({ messages: [], strategy: "explicit" });
+  assert.deepEqual(decision.candidates, ["ollama", "cloud"]);
+});
+
+test("allowRemote=false excludes remote providers and reports what was excluded", async () => {
+  const router = createModelRouter([fakeProvider("cloud"), localProvider("ollama")]);
+  const { providers } = await router.candidates({ messages: [], strategy: "explicit", allowRemote: false });
+  assert.deepEqual(providers.map((p) => p.id), ["ollama"]);
+
+  const cloudOnly = createModelRouter([fakeProvider("cloud")]);
+  await assert.rejects(cloudOnly.candidates({ messages: [], allowRemote: false }), (error: unknown) => {
+    assert.ok(error instanceof NoEligibleProviderError);
+    assert.deepEqual(error.remoteExcluded, ["cloud"]);
+    return true;
+  });
+});
+
+test("an undeclared locality is treated as remote, never as local", async () => {
+  const router = createModelRouter([fakeProvider("undeclared")]);
+  await assert.rejects(router.candidates({ messages: [], allowRemote: false }), /No local model provider/);
+});
+
+test("a named remote provider is refused when remote routing is not permitted", async () => {
+  const router = createModelRouter([fakeProvider("cloud"), localProvider("ollama")]);
+  await assert.rejects(router.candidates({ messages: [], provider: "cloud", allowRemote: false }), /remote routing is not permitted/);
+});
+
+test("capability filtering skips providers that declare they lack it", async () => {
+  const chatOnly = Object.assign(localProvider("chat-only"), { capabilities: ["chat" as const] });
+  const embedder = Object.assign(localProvider("embedder"), { capabilities: ["embed" as const] });
+  const { providers } = await createModelRouter([chatOnly, embedder]).candidates({ messages: [], strategy: "explicit", capability: "embed" });
+  assert.deepEqual(providers.map((p) => p.id), ["embedder"]);
+});
+
+test("unhealthy local provider falls behind healthy remote only when remote is allowed", async () => {
+  const router = createModelRouter([localProvider("ollama", { healthy: false }), fakeProvider("cloud")]);
+  const allowed = await router.candidates({ messages: [], strategy: "balanced" });
+  assert.deepEqual(allowed.decision.candidates, ["cloud"]);
+  await assert.rejects(createModelRouter([localProvider("ollama", { healthy: false }), fakeProvider("cloud")]).candidates({ messages: [], strategy: "balanced", allowRemote: false }), /no healthy model providers/);
 });

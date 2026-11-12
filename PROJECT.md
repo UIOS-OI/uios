@@ -28,7 +28,8 @@
 | 17 | Hosted knowledge planets | Preserve repository file paths while deterministically placing each Memory artifact beneath its Policies, Engineering, Sales, HR, Finance, or Customer host planet. | M16 | DONE |
 | 18 | Sacred geometry host worlds | Translate the nested-orb reference into deterministic crystalline, mandala, cellular-lattice, and orbital-flower planet shells with luminous cores and independent internal rotation. | M17 | DONE |
 | 19 | Intelligence Core Phase 0 — Foundation hardening | Patch prod dependency advisories, remove fabricated embeddings and the ingestion test hook, strip and re-sign internal auth headers, fix E2E runner exit code, add service unit tests. See `docs/intelligence-core/`. | None | DONE |
-| 20 | Intelligence Core Phase 1 — Local Ollama inference | Native Ollama provider, capability-aware local-first routing, tool-call support in the gateway contract. | M19 | PLANNED |
+| 20 | Living Universe Stage 1 — Local intelligence + trace backbone | Native Ollama provider, local-first routing with consent-gated cloud fallback, gateway tool calls, persisted trace events with live SSE stream, coverage and external-agent reporting. See `docs/intelligence-core/LIVING_UNIVERSE_PLAN.md` §3.0. | M19 | DONE (live Ollama run pending on owner machine) |
+| 21 | Living Universe Stage 2 — Resource discovery + project identity | Canonical resource URNs, projects, relations; uios-internal, local-folder, local-git, and GitHub connectors; DOM resource explorer. | M20 | PLANNED |
 
 ## Code Layout
 - apps/dashboard/app/lib/state-store.ts - Persistence
@@ -36,6 +37,11 @@
 - services/gateway-provider/src/index.ts - Model provider with embed()
 - apps/dashboard/app/api/ingestion - Ingestion endpoints (upload, status)
 - apps/dashboard/app/lib/ingestion-queue.ts - In-process ingestion queue and worker
+- services/provider-ollama - Local inference via Ollama's native API
+- services/trace, services/intelligence-store - Trace bus, SQLite intelligence store and migrations
+- apps/dashboard/app/lib/model-access.ts - Local-first routing and cloud consent tokens
+- apps/dashboard/app/lib/intelligence.ts - Intelligence Core singletons, trace coverage
+- apps/dashboard/app/api/trace - Trace history, live stream, coverage, external-agent reports
 - packages/render-engine - Presentation-only WebGL engine and independent rendering systems
 - apps/dashboard/app/render-engine - Isolated render-engine verification surface
 - apps/dashboard/app/components/universe-experience.tsx - Active cinematic-to-universe homepage shell

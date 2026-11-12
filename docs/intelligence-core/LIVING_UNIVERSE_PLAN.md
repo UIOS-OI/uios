@@ -1,6 +1,6 @@
 # UIOS Living Universe, Unified Memory, Live Trace, and Independent Intelligence: Audit and Unified Plan
 
-Status: **proposal for owner review** (2026-11-12). Builds on commit `ee1371b` (Intelligence Core Phase 0 complete).
+Status: **approved by owner 2026-11-12** (all §4 answers recorded as D-19). Stage 1 complete (§3.0); Stage 2 next. Builds on commit `ee1371b` (Intelligence Core Phase 0 complete).
 Supersedes the phase ordering of `AUDIT_AND_ROADMAP.md` §6 (Phases 1–7). Those phases are folded into the stages below.
 Decisions: [`DECISIONS.md`](DECISIONS.md) D-11 to D-18.
 
@@ -130,6 +130,31 @@ Each stage ships real functionality with unit and E2E tests and a written list o
 | **7. Learning, skills, timeline** | Observation → candidate → approval pipeline (D-05); skills with evals and approval; timeline across resources/commits/conversations/decisions/trace; historical snapshots and replay from stored timestamps; retention for archived/deleted references | IC Phases 5–6, Phase F | #8 no fabricated knowledge (audited) |
 
 **Acceptance criterion #8** (no invented knowledge, fake memory, or claimed training) is enforced in every stage. Each stage carries tests asserting that empty sources produce explicit empty or unavailable states, not placeholder data.
+
+### 3.0 Stage 1 result (2026-11-12): complete, mock-verified; awaiting a live run on the owner's machine
+
+| Delivered | Where | Evidence |
+|---|---|---|
+| Native Ollama provider: `num_ctx` on every request, `think` sent only to thinking-capable models (default off), reasoning separated from answers including `<think>` tags split across stream chunks, tool calls, nomic task prefixes, honest health ("model not installed: run ollama pull …") | `services/provider-ollama` | 17 unit tests against a mock of Ollama's native API. A split-tag test caught a real leak in the first stream implementation, now fixed |
+| Contract additions (all optional): `ToolSpec`, `ChatResponse.reasoning`, provider `locality`/`destination`/`capabilities`, `EmbedPurpose`, trace event types | `packages/contracts` | Dashboard and service typechecks |
+| Gateway tool calling: tools sent in OpenAI format, `tool_calls` parsed, malformed arguments rejected instead of guessed | `services/gateway-provider` | Unit tests |
+| Router: capability filter, local-before-remote ordering, `allowRemote=false` exclusion, undeclared locality treated as remote, `NoEligibleProviderError.remoteExcluded` | `services/router` | 14 router tests |
+| Consent-gated cloud routing (D-11): policy `local-only` / `consent` (default) / `cloud-allowed`. On local failure `/api/chat` returns 409 with provider, host, model and per-message sizes (never content) and a 5-minute token bound to tenant, provider, and a SHA-256 digest of the exact messages. The agent route uses the same mechanism; workflows and background embeddings never use cloud without `cloud-allowed` | `app/lib/model-access.ts`, `app/api/chat`, `app/api/agent/run` | E2E `TC-CONSENT-01..03`. Negative control: forcing `allowRemote=true` (silent fallback) makes `TC-CONSENT-01` fail with a 200 streamed from the cloud mock |
+| Trace backbone: `TraceBus` (recording independent of subscribers), `tracedProvider` (sizes and token counts only, never text), credential redaction, SQLite `trace_events` with versioned migrations, cursor paging, retention, tenant deletion | `services/trace`, `services/intelligence-store`, `app/lib/intelligence.ts` | 12 unit tests, including persistence across restart and a check that prompt and answer text never appear |
+| Instrumented: model requests (chat, agent steps, workflow model nodes), embeddings, memory read/write, ingestion, Aegis decisions, agent tool calls | routes + ingestion queue | E2E `TC-TRACE-01`, `TC-INGEST-LOCAL-01` |
+| Trace API: `GET /api/trace/events`, `GET /api/trace/stream` (SSE start/end), `GET /api/trace/coverage` (explicit gaps), `POST /api/trace/report` (external agents, stored as `reported:<agent>`), `GET /api/models` | `app/api/trace/*`, `app/api/models` | E2E `TC-TRACE-02..05`, `TC-MODELS-01` |
+| Public docs restricted to an allowlist (D-19.4); private paths return the same 404 as missing files | `app/lib/universe-documents.ts` | E2E `TC-DOCS-01` |
+| `scripts/ollama-smoke.mjs` (`corepack pnpm ollama-smoke`) | scripts | Failure path verified here (Ollama unreachable → FAIL, exit 1). **Success path not yet run: needs the owner's Windows machine** |
+| Root `typecheck:services` (services + unit tests); previously no package could typecheck alone (missing `@types/node`) | `tsconfig.services.json` | A planted type error is caught |
+
+Fixed in passing: `.env.example` and `setup-local.ps1` set `UIOS_AI_GATEWAY_URL` to `…/v1/chat/completions`, but the provider appends `/chat/completions` itself, so gateway calls would have gone to `/chat/completions/chat/completions`. Topology now reports real router providers instead of the always-empty plugin registry.
+
+Known limits after Stage 1:
+- The legacy browser `uios:activity` events still exist for the (unmounted) playground and agent lab. Live Trace must not consume them (D-13).
+- `MemoryStore` (served by `/api/memory`) does not see ingestion chunks written directly to the state store. Unified in Stage 3.
+- Trace persistence is SQLite only. A Postgres `UIOS_STATE_DB` makes the intelligence store fall back to in-memory in production, reported via `/api/trace/coverage`.
+- Live streaming is single-process (in-memory bus). Multi-instance deployment needs a shared bus.
+- Consent is per request. Time-boxed workspace grants arrive with the prompt interface (Stage 6).
 
 ### 3.1 What can and cannot be verified, and where
 
